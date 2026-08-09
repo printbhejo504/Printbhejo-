@@ -1,0 +1,4 @@
+-- PrintBhejo Supabase integration schema
+-- Applied to project: zbajuyfedkgmjmmaadiy
+-- Realtime: public.webrtc_signals
+-- Existing application/WebRTC logic remains unchanged.
