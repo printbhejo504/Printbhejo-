@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+.DS_Store
