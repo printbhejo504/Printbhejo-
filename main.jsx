@@ -6,12 +6,13 @@ import ConverterTools from "./ConverterTools";
 import "./styles.css";
 import "./ui-overrides.css";
 import "./converter-tools.css";
+import "./free-tools-replacement.css";
 
 function Root() {
   const [converterOpen, setConverterOpen] = useState(false);
   return <>
     <App />
-    <button className="converter-fab" onClick={() => setConverterOpen(true)} aria-label="Open PrintBhejo tools"><Wrench size={18}/><span>Tools</span></button>
+    <button className="converter-fab" onClick={() => setConverterOpen(true)} aria-label="Open PrintBhejo Free Tools"><Wrench size={18}/><span>Free Tools</span></button>
     {converterOpen && <ConverterTools onClose={() => setConverterOpen(false)} />}
   </>;
 }
