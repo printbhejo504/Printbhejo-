@@ -27,6 +27,9 @@ body{background:radial-gradient(circle at 50% -10%,#e8f1ff 0,transparent 38%),va
 .tabs button{padding:13px 16px}
 .tabs button.active{box-shadow:0 5px 18px rgba(37,99,235,.13)}
 
+/* Brand: exact 5+5 split — PRINT black, BHEJO blue. */
+.hero h1{color:#0b0f19;background:linear-gradient(90deg,#0b0f19 0 50%,#2563eb 50% 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 5px 16px rgba(37,99,235,.08)}
+
 .workflow{padding:46px 28px 38px}
 .icon-box{width:62px;height:62px;border-radius:18px}
 
@@ -43,9 +46,15 @@ body{background:radial-gradient(circle at 50% -10%,#e8f1ff 0,transparent 38%),va
 .send-connect input{min-height:46px;border-radius:14px;border-color:#cbd8e8}
 .send-connect input:focus{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(96,165,250,.16)}
 
-.dropzone{border-radius:20px;padding:34px 22px;border-color:#bfcfe3;background:#fbfdff}
-.dropzone:hover,.dropzone.drag{border-color:#2563eb;background:#f0f6ff;box-shadow:0 10px 28px rgba(37,99,235,.08)}
-.dropzone b,.tool-btn{border-radius:12px;padding:11px 17px}
+/* Modern file picker / Select File button */
+.dropzone{border-radius:24px;padding:38px 22px;border:1.5px dashed #a9bfda;background:linear-gradient(145deg,#ffffff,#f3f8ff);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 12px 30px rgba(30,64,120,.06);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease}
+.dropzone:hover,.dropzone.drag{border-color:#2563eb;background:linear-gradient(145deg,#ffffff,#edf5ff);box-shadow:0 16px 34px rgba(37,99,235,.12);transform:translateY(-2px)}
+.dropzone b,.tool-btn{border-radius:14px;padding:12px 19px}
+.dropzone b{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff!important;border:1px solid rgba(29,78,216,.4);box-shadow:0 8px 20px rgba(37,99,235,.25);font-weight:750;transition:transform .16s ease,box-shadow .16s ease}
+.dropzone b:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(37,99,235,.32)}
+.dropzone input[type="file"]{cursor:pointer}
+.dropzone input[type="file"]::file-selector-button{margin-right:10px;padding:10px 16px;border:0;border-radius:11px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(37,99,235,.2)}
+.dropzone input[type="file"]::file-selector-button:hover{filter:brightness(1.06);transform:translateY(-1px)}
 
 .section{margin-top:48px}
 .section-head{margin-bottom:18px}
@@ -58,7 +67,14 @@ body{background:radial-gradient(circle at 50% -10%,#e8f1ff 0,transparent 38%),va
 .tools-grid{gap:15px}
 .tool-card{padding:20px}
 .links-grid{gap:15px}
-.link-card{padding:18px}
+
+/* Important links: raised 3D cards + consistent official-logo presentation. */
+.link-card{position:relative;overflow:hidden;padding:18px;min-height:108px;background:linear-gradient(145deg,#fff 0%,#f8fbff 62%,#edf4ff 100%);box-shadow:0 10px 0 rgba(15,23,42,.045),0 18px 32px rgba(30,64,120,.10),inset 0 1px 0 rgba(255,255,255,.95);transform:translateY(0);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.link-card::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.75),transparent 42%);pointer-events:none}
+.link-card:hover{transform:translateY(-5px);border-color:#b8cbea;box-shadow:0 14px 0 rgba(15,23,42,.045),0 26px 42px rgba(30,64,120,.16),inset 0 1px 0 #fff}
+.link-card img,.link-card .link-logo,.link-card .logo{width:58px;height:58px;min-width:58px;object-fit:contain;border-radius:16px;background:#fff;padding:8px;box-shadow:0 7px 16px rgba(15,23,42,.12),inset 0 0 0 1px #e5edf7;filter:drop-shadow(0 3px 4px rgba(15,23,42,.08));position:relative;z-index:1}
+.link-card img[alt]{font-size:10px}
+.link-card a{position:relative;z-index:1}
 
 .qr-code{width:200px;height:200px;border-radius:15px;box-shadow:0 12px 30px rgba(28,61,110,.14)}
 
@@ -76,4 +92,6 @@ body{background:radial-gradient(circle at 50% -10%,#e8f1ff 0,transparent 38%),va
   .section{margin-top:36px}
   .pin-panel{margin-left:2px;margin-right:2px}
   .big-pin{font-size:39px;letter-spacing:8px}
+  .link-card{min-height:96px;padding:14px;border-radius:18px}
+  .link-card img,.link-card .link-logo,.link-card .logo{width:50px;height:50px;min-width:50px;border-radius:14px;padding:7px}
 }
