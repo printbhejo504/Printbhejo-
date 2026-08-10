@@ -1,1 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="PrintBhejo logo"><defs><linearGradient id="b" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#0879c9"/><stop offset="1" stop-color="#16c7e8"/></linearGradient><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#20a7d9"/><stop offset=".55" stop-color="#64d44d"/><stop offset="1" stop-color="#d8ed45"/></linearGradient><linearGradient id="o" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f04b2e"/><stop offset="1" stop-color="#ffc51b"/></linearGradient></defs><rect width="256" height="256" fill="#fff"/><path d="M28 174V74l48 30v42H45v28z" fill="none" stroke="#0879c9" stroke-width="14" stroke-linejoin="round"/><path d="M45 102l37-28 31 18-31 24z" fill="#ffb51b"/><path d="M62 194c32-28 53-59 64-91L229 20 102 87c-8 38-22 72-40 107z" fill="url(#g)"/><path d="M102 87 229 20 116 112z" fill="url(#b)"/><path d="M116 112 229 20 154 141z" fill="#0754a6"/><path d="M116 112c-8 32-22 61-43 87l40 34c26-28 43-60 51-92z" fill="url(#o)"/><path d="M82 158c22-15 40-31 55-49" fill="none" stroke="#b6ec50" stroke-width="8" stroke-linecap="round"/><g fill="#1b79c9"><circle cx="64" cy="125" r="6"/><circle cx="92" cy="151" r="5"/></g><g fill="#ed1970"><circle cx="86" cy="115" r="8"/><circle cx="72" cy="146" r="6"/></g><circle cx="105" cy="136" r="7" fill="#62c85a"/><g fill="#12a9d8"><circle cx="174" cy="166" r="7"/><circle cx="150" cy="190" r="5"/></g><g fill="#ffad16"><rect x="173" y="185" width="13" height="13" rx="2"/><rect x="200" y="162" width="10" height="10" rx="2"/></g><circle cx="192" cy="201" r="12" fill="#e31c74"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="PrintBhejo logo">
+<defs>
+  <linearGradient id="paper" x1="25" y1="210" x2="205" y2="45" gradientUnits="userSpaceOnUse"><stop stop-color="#0879C9"/><stop offset=".5" stop-color="#13C5E8"/><stop offset="1" stop-color="#0754A6"/></linearGradient>
+  <linearGradient id="plane" x1="92" y1="174" x2="225" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="#06A9E0"/><stop offset=".45" stop-color="#1467D9"/><stop offset=".72" stop-color="#7BDD43"/><stop offset="1" stop-color="#FFC51B"/></linearGradient>
+  <linearGradient id="sheet" x1="55" y1="62" x2="130" y2="174" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#EAF5FF"/></linearGradient>
+  <linearGradient id="print" x1="54" y1="148" x2="197" y2="225" gradientUnits="userSpaceOnUse"><stop stop-color="#0879C9"/><stop offset="1" stop-color="#13C5E8"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-opacity=".18"/></filter>
+</defs>
+<rect width="256" height="256" rx="48" fill="#fff"/>
+<!-- document stack -->
+<g filter="url(#shadow)">
+ <path d="M42 61a10 10 0 0 1 10-10h56l25 25v58H52a10 10 0 0 1-10-10z" fill="url(#sheet)" stroke="#0B79C9" stroke-width="5"/>
+ <path d="M108 51v25h25" fill="#CBEAFF"/>
+ <rect x="59" y="83" width="48" height="7" rx="3.5" fill="#1683D5"/>
+ <rect x="59" y="99" width="36" height="7" rx="3.5" fill="#6BC9EA"/>
+</g>
+<!-- printer -->
+<g filter="url(#shadow)">
+ <path d="M58 130h128a18 18 0 0 1 18 18v39a18 18 0 0 1-18 18H58a18 18 0 0 1-18-18v-39a18 18 0 0 1 18-18z" fill="url(#print)"/>
+ <rect x="66" y="151" width="112" height="47" rx="9" fill="#fff"/>
+ <rect x="76" y="118" width="92" height="43" rx="7" fill="#F9FCFF" stroke="#0B79C9" stroke-width="5"/>
+ <rect x="89" y="129" width="66" height="6" rx="3" fill="#1683D5"/>
+ <circle cx="169" cy="146" r="5" fill="#20C6E8"/>
+ <circle cx="169" cy="162" r="5" fill="#FFC51B"/>
+</g>
+<!-- printed sheet -->
+<path d="M77 188h90v43a9 9 0 0 1-9 9H86a9 9 0 0 1-9-9z" fill="#fff" stroke="#0B79C9" stroke-width="4"/>
+<path d="M92 202h55" stroke="#0B79C9" stroke-width="6" stroke-linecap="round"/>
+<path d="M92 216h40" stroke="#FF4B67" stroke-width="6" stroke-linecap="round"/>
+<!-- colorful paper plane -->
+<path d="M89 151 224 27 164 178l-28-47z" fill="url(#plane)" stroke="#0754A6" stroke-width="3" stroke-linejoin="round"/>
+<path d="M89 151 224 27 139 131z" fill="#12A9D8" opacity=".9"/>
+<path d="m139 131 25 47 10-75z" fill="#0A4DA5" opacity=".95"/>
+<!-- motion trail -->
+<path d="M35 111c23-12 43-28 58-48" fill="none" stroke="#20C6E8" stroke-width="9" stroke-linecap="round"/>
+<path d="M27 126c20-5 36-14 49-26" fill="none" stroke="#FFC51B" stroke-width="7" stroke-linecap="round"/>
+<!-- accent pixels -->
+<circle cx="39" cy="91" r="5" fill="#E91E73"/><circle cx="55" cy="78" r="4" fill="#72D64A"/><rect x="204" y="78" width="9" height="9" rx="2" fill="#E91E73"/><rect x="216" y="92" width="7" height="7" rx="2" fill="#FFC51B"/>
+</svg>
