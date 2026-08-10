@@ -115,6 +115,44 @@ export function createReceiverPeer({ sessionId, peerId, onFile, onStatus }) {
   let current = null;
   let remoteDescriptionSet = false;
   const pendingIce = [];
+  const messageQueue = [];
+  let processingQueue = false;
+
+  const processMessageQueue = async () => {
+    if (processingQueue) return;
+    processingQueue = true;
+    try {
+      while (messageQueue.length) {
+        const data = messageQueue.shift();
+        if (typeof data === "string") {
+          const msg = JSON.parse(data);
+          if (msg.type === "file-start") {
+            if (current) throw new Error("Received a new file before the previous file was finalized.");
+            current = { ...msg, chunks: [], received: 0 };
+            onStatus?.("receiving", 0, msg.fileSize);
+          } else if (msg.type === "file-complete" && current?.fileId === msg.fileId) {
+            if (current.received !== current.fileSize) {
+              throw new Error(`Incomplete file received: ${current.fileName}`);
+            }
+            const finished = current;
+            current = null;
+            const blob = new Blob(finished.chunks, { type: finished.fileType });
+            await onFile?.({ ...finished, blob });
+          }
+        } else if (current) {
+          current.chunks.push(data);
+          current.received += data.byteLength;
+          onStatus?.("receiving", current.received, current.fileSize);
+        }
+      }
+    } catch (error) {
+      current = null;
+      onStatus?.("error", error);
+    } finally {
+      processingQueue = false;
+      if (messageQueue.length) processMessageQueue();
+    }
+  };
 
   const channelHandler = channel => {
     channel.binaryType = "arraybuffer";
@@ -122,25 +160,9 @@ export function createReceiverPeer({ sessionId, peerId, onFile, onStatus }) {
     channel.onclose = () => onStatus?.("disconnected");
     channel.onerror = () => onStatus?.("error");
 
-    channel.onmessage = async event => {
-      try {
-        if (typeof event.data === "string") {
-          const msg = JSON.parse(event.data);
-          if (msg.type === "file-start") {
-            current = { ...msg, chunks: [], received: 0 };
-          } else if (msg.type === "file-complete" && current?.fileId === msg.fileId) {
-            const blob = new Blob(current.chunks, { type: current.fileType });
-            await onFile?.({ ...current, blob });
-            current = null;
-          }
-        } else if (current) {
-          current.chunks.push(event.data);
-          current.received += event.data.byteLength;
-          onStatus?.("receiving", current.received, current.fileSize);
-        }
-      } catch (error) {
-        onStatus?.("error", error);
-      }
+    channel.onmessage = event => {
+      messageQueue.push(event.data);
+      processMessageQueue();
     };
   };
 
