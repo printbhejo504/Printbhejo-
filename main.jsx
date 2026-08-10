@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { createRoot, createPortal } from "react-dom/client";
 import { Wrench } from "lucide-react";
 import App from "./App";
-import ConverterTools from "./ConverterTools";
 import "./styles.css";
 import "./ui-overrides.css";
 import "./converter-tools.css";
 import "./free-tools-replacement.css";
 import "./free-tools-placement.css";
+
+const ConverterTools = lazy(() => import("./ConverterTools"));
 
 function Root() {
   const [converterOpen, setConverterOpen] = useState(false);
@@ -21,8 +22,8 @@ function Root() {
     target.parentNode.insertBefore(host, target);
     setToolsHost(host);
     return () => {
-      setToolsHost(null);
       host.remove();
+      setToolsHost(null);
     };
   }, []);
 
@@ -34,7 +35,7 @@ function Root() {
       </button>,
       toolsHost
     )}
-    {converterOpen && <ConverterTools onClose={() => setConverterOpen(false)} />}
+    {converterOpen && <Suspense fallback={<div className="converter-loading">Opening Free Tools…</div>}><ConverterTools onClose={() => setConverterOpen(false)} /></Suspense>}
   </>;
 }
 
