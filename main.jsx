@@ -1,5 +1,6 @@
 import React, { Component, Suspense, lazy, useEffect, useState } from "react";
-import { createRoot, createPortal } from "react-dom/client";
+import { createRoot } from "react-dom/client";
+import { createPortal } from "react-dom";
 import { Wrench } from "lucide-react";
 import App from "./App";
 import "./styles.css";
