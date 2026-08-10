@@ -1,11 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Printbhejo logo">
-  <defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#08a7d8"/><stop offset=".52" stop-color="#1764c0"/><stop offset="1" stop-color="#ffb000"/></linearGradient></defs>
-  <rect x="4" y="4" width="120" height="120" rx="28" fill="#fff"/>
-  <path d="M20 48h33v16H34v26h25v16H24c-5 0-9-4-9-9V57c0-5 0-9 5-9z" fill="none" stroke="#135ca8" stroke-width="9" stroke-linejoin="round"/>
-  <path d="M48 23 111 12 79 67 67 49z" fill="url(#g)"/>
-  <path d="m48 23 31 44-7 34-17-42z" fill="#18b8d1" opacity=".9"/>
-  <path d="m79 67 32-55-13 66-25 12z" fill="#ff8a00" opacity=".92"/>
-  <path d="m62 81 23 17-21 9z" fill="#0e68c4"/>
-  <circle cx="76" cy="38" r="4" fill="#7fd43b"/><circle cx="89" cy="31" r="4" fill="#f03a8c"/>
-  <circle cx="86" cy="53" r="4" fill="#ffb000"/><circle cx="98" cy="48" r="3" fill="#0da7d6"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1215 1215" role="img" aria-label="PrintBhejo logo"><image href="data:image/jpeg;base64,PLACEHOLDER" x="0" y="0" width="1215" height="1215" preserveAspectRatio="xMidYMid meet"/></svg>
