@@ -1,7 +1,6 @@
 import React, { Component, Suspense, lazy, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
-import { Wrench } from "lucide-react";
 import App from "./App";
 import "./styles.css";
 import "./ui-overrides.css";
@@ -31,7 +30,6 @@ class AppErrorBoundary extends Component {
 }
 
 function Root() {
-  const [converterOpen, setConverterOpen] = useState(false);
   const [toolsHost, setToolsHost] = useState(null);
 
   useEffect(() => {
@@ -50,12 +48,11 @@ function Root() {
   return <>
     <App />
     {toolsHost && createPortal(
-      <button className="converter-fab" onClick={() => setConverterOpen(true)} aria-label="Open PrintBhejo Free Tools">
-        <Wrench size={18}/><span>Free Tools</span>
-      </button>,
+      <Suspense fallback={<div className="converter-loading">Loading Free Tools…</div>}>
+        <ConverterTools inline />
+      </Suspense>,
       toolsHost
     )}
-    {converterOpen && <Suspense fallback={<div className="converter-loading">Opening Free Tools…</div>}><ConverterTools onClose={() => setConverterOpen(false)} /></Suspense>}
   </>;
 }
 
