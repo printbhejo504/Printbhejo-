@@ -117,7 +117,7 @@ async function pdfToImages(file) {
   return outputs;
 }
 
-export default function ConverterTools({ onClose }) {
+export default function ConverterTools({ onClose, inline = false }) {
   const [tool, setTool] = useState("png-jpg");
   const [fileList, setFileList] = useState([]);
   const [targetKB, setTargetKB] = useState("100");
@@ -146,9 +146,9 @@ export default function ConverterTools({ onClose }) {
     finally { setBusy(false); }
   }
 
-  return <div className="converter-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-    <section className="converter-panel">
-      <div className="converter-head"><div><span className="converter-kicker">PRIVATE • BROWSER ONLY</span><h2>PrintBhejo Tools</h2><p>Files stay in your browser during these conversions.</p></div><button className="converter-close" onClick={onClose}><X size={20}/></button></div>
+  return <div className={inline ? "converter-inline" : "converter-backdrop"} onMouseDown={e => !inline && e.target === e.currentTarget && onClose?.()}>
+    <section className={inline ? "converter-panel converter-panel-inline" : "converter-panel"}>
+      <div className="converter-head"><div><span className="converter-kicker">PRIVATE • BROWSER ONLY</span><h2>PrintBhejo Tools</h2><p>Files stay in your browser during these conversions.</p></div>{!inline && <button className="converter-close" onClick={onClose}><X size={20}/></button>}</div>
       <div className="tool-grid">{tools.map(t => { const Icon = t.icon; return <button key={t.id} className={tool === t.id ? "tool-card active" : "tool-card"} onClick={() => setTool(t.id)}><Icon size={21}/><span>{t.title}</span></button>; })}</div>
       <div className="converter-workspace">
         <div className="drop-area" onClick={() => inputRef.current?.click()}><input ref={inputRef} hidden type="file" accept={activeTool.accept} multiple={activeTool.multiple} onChange={choose}/><ImageIcon size={34}/><strong>{fileList.length ? `${fileList.length} file${fileList.length > 1 ? "s" : ""} selected` : "Select file"}</strong><span>{activeTool.multiple ? "You can select multiple images" : activeTool.accept}</span></div>
