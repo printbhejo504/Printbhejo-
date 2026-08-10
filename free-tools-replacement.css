@@ -1,0 +1,17 @@
+/* Replace the legacy Free Tools cards with the new browser-only Tools launcher. */
+.section:has(.tools-grid) {
+  display: none !important;
+}
+
+.converter-fab {
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 720px) {
+  .converter-fab {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    max-width: calc(100vw - 24px);
+  }
+}
