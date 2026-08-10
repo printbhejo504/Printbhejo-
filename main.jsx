@@ -7,6 +7,7 @@ import "./styles.css";
 import "./ui-overrides.css";
 import "./converter-tools.css";
 import "./free-tools-replacement.css";
+import "./free-tools-placement.css";
 
 function Root() {
   const [converterOpen, setConverterOpen] = useState(false);
