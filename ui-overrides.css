@@ -11,21 +11,27 @@ body{background:radial-gradient(circle at 50% -10%,#e8f1ff 0,transparent 38%),va
 .section{margin-top:48px}.section-head{margin-bottom:18px}.file-grid{gap:16px}.file-card,.tool-card,.link-card{border-color:#dfe7f1;border-radius:20px;box-shadow:0 7px 24px rgba(30,64,120,.04)}.file-card:hover,.tool-card:hover{box-shadow:0 15px 32px rgba(30,64,120,.085)}.file-actions{gap:8px}.file-actions button,.collection-actions button,.editor-controls button{min-height:38px;border-radius:11px}.tools-grid{gap:15px}.tool-card{padding:20px}.links-grid{gap:15px}
 .link-card{position:relative;overflow:hidden;padding:18px;min-height:108px;background:linear-gradient(145deg,#fff 0%,#f8fbff 62%,#edf4ff 100%);box-shadow:0 10px 0 rgba(15,23,42,.045),0 18px 32px rgba(30,64,120,.10),inset 0 1px 0 rgba(255,255,255,.95);transform:translateY(0);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.link-card::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.75),transparent 42%);pointer-events:none}.link-card:hover{transform:translateY(-5px);border-color:#b8cbea;box-shadow:0 14px 0 rgba(15,23,42,.045),0 26px 42px rgba(30,64,120,.16),inset 0 1px 0 #fff}.link-card img,.link-card .link-logo,.link-card .logo{width:58px;height:58px;min-width:58px;object-fit:contain;border-radius:16px;background:#fff;padding:8px;box-shadow:0 7px 16px rgba(15,23,42,.12),inset 0 0 0 1px #e5edf7;filter:drop-shadow(0 3px 4px rgba(15,23,42,.08));position:relative;z-index:1}.link-card img[alt]{font-size:10px}.qr-code{width:200px;height:200px;border-radius:15px;box-shadow:0 12px 30px rgba(28,61,110,.14)}
 html,body,#root,.app{min-height:100%;height:auto;overflow-x:hidden;overflow-y:visible!important}.app{min-height:100vh;width:100%;max-width:100vw}.header{position:sticky;top:0}.app main{width:100%;max-width:1180px;height:auto;max-height:none;overflow:visible!important}.section,.transfer-card,.card{max-height:none}
-/* Final responsive fix: prevents the mobile layout from appearing zoomed/cropped and keeps the header compact. */
 @media(max-width:1100px){.header{height:68px;padding-left:16px;padding-right:16px}.nav{display:none;position:absolute;right:16px;top:62px;background:#fff;border:1px solid #e3eaf3;border-radius:14px;padding:6px;box-shadow:0 15px 35px rgba(24,54,94,.12);flex-direction:column;min-width:180px}.nav.open{display:flex}.menu-btn{display:grid;place-items:center}.brand-logo{width:50px;height:50px;flex-basis:50px}.brand strong{font-size:21px}}
 @media(max-width:800px){main{padding:26px 14px 58px}.header{padding-left:12px;padding-right:12px}.brand{gap:9px}.brand-logo{width:46px;height:46px;flex-basis:46px;border-radius:13px}.brand strong{font-size:20px}.brand span{display:none}.hero{padding-top:22px;padding-bottom:24px}.hero h1{font-size:42px;letter-spacing:-2.3px;gap:10px}.hero h1::after{width:52px;height:52px;flex-basis:52px}.hero-copy{max-width:680px}.workflow{padding:34px 17px 28px;min-height:310px}.primary,.secondary{width:100%;min-height:46px}.send-connect{flex-direction:column}.send-connect input{width:100%}.send-buttons{flex-direction:column}.tools-grid{gap:10px}.tool-card{padding:15px}.section{margin-top:36px}.pin-panel{margin-left:2px;margin-right:2px}.big-pin{font-size:39px;letter-spacing:8px}.link-card{min-height:96px;padding:14px;border-radius:18px}.link-card img,.link-card .link-logo,.link-card .logo{width:50px;height:50px;min-width:50px;border-radius:14px;padding:7px}}
 @media(max-width:520px){main{padding:22px 10px 52px}.header{height:64px}.brand-logo{width:42px;height:42px;flex-basis:42px}.brand strong{font-size:19px}.hero h1{font-size:38px;gap:8px}.hero h1::after{width:48px;height:48px;flex-basis:48px}.hero-copy{font-size:14px}.badges{display:grid;grid-template-columns:1fr}.badges span{text-align:center}.workflow{padding:28px 12px}.big-pin{font-size:36px;letter-spacing:7px}.tools-grid{grid-template-columns:1fr}.file-actions button{padding:8px 6px}.section-head h2{font-size:20px}.pin-flow{font-size:11px;gap:5px}.pin-flow span{background:#fff;border:1px solid #e3eaf3;border-radius:999px;padding:5px 8px}.send-buttons{flex-direction:column}.qr-code{width:175px;height:175px}}
 
-/* PrintBhejo hero branding: show the uploaded visual beside the main name. */
+/* PrintBhejo hero branding */
 .hero h1{display:inline-flex;align-items:center;justify-content:center;gap:14px;vertical-align:middle}
 .hero h1::after{content:"";display:inline-block;width:58px;height:58px;flex:0 0 58px;background:url("/printbhejo-logo-new.png?v=2") center/contain no-repeat;border-radius:12px}
 .brand-logo{object-fit:contain;object-position:center;background:#fff}
 
-/* Desktop hero alignment fix: status must stay above the PrintBhejo title, never beside it. */
+/* Desktop hero alignment fix: status stays above the PrintBhejo title. */
 .hero{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important}
 .status-pill{display:inline-flex!important;align-self:center!important;margin:0 auto!important;order:0!important}
 .hero h1{order:1!important;margin-top:19px!important}
 .hero .tagline,.hero .hero-copy,.hero .badges{order:2}
 
-/* PrintBhejo title colors: Print = black, bhejo = blue. */
+/* Main hero title colors */
 .hero h1{background:linear-gradient(90deg,#0b0f19 0 50%,#2563eb 50% 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
+
+/* Header brand: Print black + Bhejo blue. Subtitle remains unchanged. */
+.header .brand strong{font-size:0!important;background:none!important;-webkit-text-fill-color:initial!important;color:inherit!important;display:block!important;line-height:1.05!important}
+.header .brand strong::before{content:"Print";color:#0b0f19!important;font-size:23px;font-weight:750;letter-spacing:-.9px}
+.header .brand strong::after{content:"Bhejo";color:#2563eb!important;font-size:23px;font-weight:750;letter-spacing:-.9px}
+@media(max-width:1100px){.header .brand strong::before,.header .brand strong::after{font-size:21px}}
+@media(max-width:520px){.header .brand strong::before,.header .brand strong::after{font-size:19px}}
