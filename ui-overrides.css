@@ -31,9 +31,9 @@ html,body,#root,.app{min-height:100%;height:auto;overflow-x:hidden;overflow-y:vi
 @media(max-width:1100px){.header .brand strong::before,.header .brand strong::after{font-size:21px}}
 @media(max-width:520px){.header .brand strong::before,.header .brand strong::after{font-size:19px}}
 
-/* Hero PrintBhejo title: clear text + logo with balanced spacing. */
-.hero h1{font-size:0!important;background:none!important;-webkit-text-fill-color:initial!important;color:inherit!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:16px!important;line-height:1!important;white-space:nowrap!important}
-.hero h1::before{content:"PrintBhejo";font-size:44px;font-weight:800;letter-spacing:-2px;line-height:1.05;background:linear-gradient(90deg,#0b0f19 0 50%,#2563eb 50% 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.hero h1::after{content:"";display:block;width:52px;height:52px;flex:0 0 52px;background:url("/printbhejo-logo-new.png?v=3") center/contain no-repeat;border-radius:10px;filter:drop-shadow(0 4px 8px rgba(15,23,42,.10))}
-@media(max-width:800px){.hero h1{gap:13px!important}.hero h1::before{font-size:40px;letter-spacing:-1.8px}.hero h1::after{width:48px;height:48px;flex-basis:48px}}
-@media(max-width:520px){.hero h1{gap:10px!important}.hero h1::before{font-size:34px;letter-spacing:-1.5px}.hero h1::after{width:42px;height:42px;flex-basis:42px}}
+/* Hero PrintBhejo title: larger, centered and clearly separated from logo. */
+.hero h1{font-size:0!important;background:none!important;-webkit-text-fill-color:initial!important;color:inherit!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;line-height:1.18!important;white-space:nowrap!important;overflow:visible!important}
+.hero h1::before{content:"PrintBhejo";font-size:44px;font-weight:800;letter-spacing:-1.4px;line-height:1.18;padding:0 2px 2px 0;background:linear-gradient(90deg,#0b0f19 0 50%,#2563eb 50% 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero h1::after{content:"";display:block;width:64px;height:64px;flex:0 0 64px;background:url("/printbhejo-logo-new.png?v=4") center/contain no-repeat;border-radius:10px;filter:drop-shadow(0 4px 8px rgba(15,23,42,.10));margin:0;align-self:center}
+@media(max-width:800px){.hero h1{gap:7px!important}.hero h1::before{font-size:40px;letter-spacing:-1px}.hero h1::after{width:58px;height:58px;flex-basis:58px}}
+@media(max-width:520px){.hero h1{gap:5px!important}.hero h1::before{font-size:34px;letter-spacing:-.8px}.hero h1::after{width:48px;height:48px;flex-basis:48px}}
