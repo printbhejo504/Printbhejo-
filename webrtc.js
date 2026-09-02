@@ -3,10 +3,65 @@ import { ICE_SERVERS, supabase } from "./config";
 const CHUNK_SIZE = 64 * 1024;
 const MAX_BUFFERED = 4 * 1024 * 1024;
 const LOW_BUFFERED = 1 * 1024 * 1024;
+const PERMANENT_SESSION_EXPIRY = "2099-12-31T23:59:59.000Z";
 
 export function makePeerId() { const bytes = crypto.getRandomValues(new Uint8Array(16)); return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join(""); }
-export async function createSession(pin) { if (!supabase) throw new Error("Supabase is not configured."); const expires = new Date(Date.now()+10*60*1000).toISOString(); const {data,error}=await supabase.from("transfer_sessions").insert({pin,expires_at:expires,status:"active"}).select("id,pin,created_at,expires_at,status").single(); if(error)throw error; return data; }
-export async function findSession(pin) { if(!supabase)throw new Error("Supabase is not configured."); const {data,error}=await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin",pin).eq("status","active").gt("expires_at",new Date().toISOString()).maybeSingle(); if(error)throw error; return data; }
+
+function generatePin() { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+async function getPermanentPin() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  let { data: profile, error } = await supabase.from("profiles").select("permanent_pin").eq("id", user.id).maybeSingle();
+  if (error) throw error;
+
+  if (!profile) {
+    const { data: created, error: createError } = await supabase.from("profiles").insert({ id: user.id, full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "PrintBhejo User", role: "user", disabled: false }).select("permanent_pin").single();
+    if (createError) throw createError;
+    profile = created;
+  }
+
+  if (profile?.permanent_pin) return profile.permanent_pin;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const pin = generatePin();
+    const { data: updated, error: updateError } = await supabase.from("profiles").update({ permanent_pin: pin }).eq("id", user.id).is("permanent_pin", null).select("permanent_pin").maybeSingle();
+    if (updateError) {
+      if (updateError.code === "23505") continue;
+      throw updateError;
+    }
+    if (updated?.permanent_pin) return updated.permanent_pin;
+    const { data: latest } = await supabase.from("profiles").select("permanent_pin").eq("id", user.id).maybeSingle();
+    if (latest?.permanent_pin) return latest.permanent_pin;
+  }
+  throw new Error("Permanent PIN generate nahi ho saka. Please try again.");
+}
+
+export async function createSession(pin) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const permanentPin = await getPermanentPin();
+  const sessionPin = permanentPin || pin;
+  const expires = permanentPin ? PERMANENT_SESSION_EXPIRY : new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  if (permanentPin) {
+    const { data: existing, error: findError } = await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin", sessionPin).eq("status", "active").gt("expires_at", new Date().toISOString()).maybeSingle();
+    if (findError) throw findError;
+    if (existing) return existing;
+  }
+
+  const { data, error } = await supabase.from("transfer_sessions").insert({ pin: sessionPin, expires_at: expires, status: "active" }).select("id,pin,created_at,expires_at,status").single();
+  if (error) {
+    if (permanentPin && error.code === "23505") {
+      const { data: existing } = await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin", sessionPin).eq("status", "active").maybeSingle();
+      if (existing) return existing;
+    }
+    throw error;
+  }
+  return data;
+}
+
+export async function findSession(pin) { if (!supabase) throw new Error("Supabase is not configured."); const {data,error}=await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin",pin).eq("status","active").gt("expires_at",new Date().toISOString()).maybeSingle(); if(error)throw error; return data; }
 export async function sendSignal(sessionId,senderId,type,payload){if(!supabase)throw new Error("Supabase is not configured.");const expires=new Date(Date.now()+10*60*1000).toISOString();const{error}=await supabase.from("webrtc_signals").insert({session_id:sessionId,sender_id:senderId,type,payload,expires_at:expires});if(error)throw error;}
 export function subscribeSignals(sessionId,callback,onError){if(!supabase)throw new Error("Supabase is not configured.");const channel=supabase.channel(`printbhejo-signals-${sessionId}-${Math.random().toString(36).slice(2)}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"webrtc_signals",filter:`session_id=eq.${sessionId}`},payload=>callback(payload.new)).subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")onError?.(new Error(`Supabase Realtime ${status.toLowerCase().replace("_"," ")}.`));});return()=>{supabase.removeChannel(channel);};}
 function waitForBufferedAmountLow(channel){return new Promise(resolve=>{if(channel.bufferedAmount<=LOW_BUFFERED)return resolve();const previous=channel.onbufferedamountlow;channel.bufferedAmountLowThreshold=LOW_BUFFERED;channel.onbufferedamountlow=()=>{channel.onbufferedamountlow=previous;resolve();};});}
