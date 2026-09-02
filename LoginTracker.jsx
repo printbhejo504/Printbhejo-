@@ -1,0 +1,3 @@
+import {useEffect} from "react";
+import {supabase} from "./config";
+export default function LoginTracker(){useEffect(()=>{if(!supabase)return;let active=true;const record=async(s)=>{if(!active||!s?.user)return;const key=`pb-login-${s.user.id}-${new Date().toISOString().slice(0,10)}`;if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");await supabase.from("login_events").insert({user_id:s.user.id});await supabase.from("profiles").update({last_login_at:new Date().toISOString()}).eq("id",s.user.id)};supabase.auth.getSession().then(({data})=>record(data.session));const {data:l}=supabase.auth.onAuthStateChange((event,s)=>{if(event==="SIGNED_IN")record(s)});return()=>{active=false;l.subscription.unsubscribe()}},[]);return null}
