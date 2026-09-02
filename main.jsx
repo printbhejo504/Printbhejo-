@@ -2,6 +2,7 @@ import React, { Component, Suspense, lazy, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import App from "./App";
+import AuthGate from "./AuthGate";
 import "./styles.css";
 import "./ui-overrides.css";
 import "./batch-ui.css";
@@ -37,12 +38,9 @@ function enhanceTransferUI() {
     const send = buttons.find(b => /send/i.test(b.textContent || ""));
     const receive = buttons.find(b => /receive/i.test(b.textContent || ""));
     if (send && receive) {
-      send.style.order = "1";
-      receive.style.order = "2";
-      if (!tabs.dataset.pbOrderSet) {
-        tabs.dataset.pbOrderSet = "1";
-        setTimeout(() => send.click(), 80);
-      }
+      send.style.order = "2";
+      receive.style.order = "1";
+      if (!tabs.dataset.pbOrderSet) tabs.dataset.pbOrderSet = "1";
     }
   }
 
@@ -56,7 +54,10 @@ function enhanceTransferUI() {
         btn.className = "secondary pb-send-again";
         btn.type = "button";
         btn.textContent = "＋ Send Another File";
-        btn.addEventListener("click", () => uploadArea.querySelector('.dropzone input[type="file"]')?.click());
+        btn.addEventListener("click", () => {
+          const input = uploadArea.querySelector('.dropzone input[type="file"]');
+          if (input) { input.value = ""; input.click(); }
+        });
         uploadArea.appendChild(btn);
       }
     }
@@ -109,15 +110,17 @@ function Root() {
     return () => { observer.disconnect(); window.clearTimeout(window.__pbEnhanceTimer); };
   }, []);
 
-  return <>
-    <App />
-    {toolsHost && createPortal(
-      <Suspense fallback={<div className="converter-loading">Loading Free Tools…</div>}>
-        <ConverterTools inline />
-      </Suspense>,
-      toolsHost
-    )}
-  </>;
+  return <AuthGate>
+    <>
+      <App />
+      {toolsHost && createPortal(
+        <Suspense fallback={<div className="converter-loading">Loading Free Tools…</div>}>
+          <ConverterTools inline />
+        </Suspense>,
+        toolsHost
+      )}
+    </>
+  </AuthGate>;
 }
 
 createRoot(document.getElementById("root")).render(<AppErrorBoundary><Root /></AppErrorBoundary>);
