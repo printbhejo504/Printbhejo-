@@ -1,8 +1,4 @@
-/* Replace the legacy Free Tools cards with the new browser-only Tools launcher. */
-.section:has(.tools-grid) {
-  display: none !important;
-}
-
+/* Keep the original Free Tools section visible above Important Links. */
 .converter-fab {
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
