@@ -1,6 +1,7 @@
 const DB_NAME = "PrintBhejoDB";
 const DB_VERSION = 1;
 const STORE = "files";
+const batchExpiries = new Map();
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -19,11 +20,20 @@ function openDB() {
 }
 
 export async function saveFile(record) {
+  const normalized = { ...record };
+  if (normalized.batchId) {
+    let expiry = batchExpiries.get(normalized.batchId);
+    if (!expiry || expiry <= Date.now()) {
+      expiry = Date.now() + 10 * 60 * 1000;
+      batchExpiries.set(normalized.batchId, expiry);
+    }
+    normalized.expiresAt = expiry;
+  }
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(record);
-    tx.oncomplete = () => { db.close(); resolve(record); };
+    tx.objectStore(STORE).put(normalized);
+    tx.oncomplete = () => { db.close(); resolve(normalized); };
     tx.onerror = () => { db.close(); reject(tx.error); };
   });
 }
