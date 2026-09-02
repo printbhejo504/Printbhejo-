@@ -1,8 +1,9 @@
-/* The old Free Tools block is replaced by the modern browser-only converter. */
+/* Legacy Free Tools UI is replaced by the modern browser-only converter. */
 .section:has(.tools-grid) {
   display: none !important;
 }
 
+/* Modern converter slot remains directly above Important Links. */
 .converter-tools-slot {
   width: 100%;
   display: block;
@@ -12,5 +13,6 @@
 @media (max-width: 720px) {
   .converter-tools-slot {
     margin: 20px 0 14px;
+    padding: 0 2px;
   }
 }
