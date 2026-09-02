@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, Eye, EyeOff, LogIn, LogOut, QrCode, User, X } from "lucide-react";
+import { Eye, EyeOff, LogIn, LogOut, QrCode, User, X } from "lucide-react";
 import { supabase } from "./config";
 import "./auth-ui.css";
 
@@ -53,12 +53,6 @@ export default function AuthGate({ children }) {
 
   const user = session?.user;
   const name = getDisplayName(user);
-  const permanentUrl = useMemo(() => {
-    if (!user) return "";
-    const base = window.location.origin + window.location.pathname;
-    return `${base}?receiver=${encodeURIComponent(user.id)}&name=${encodeURIComponent(name)}`;
-  }, [user, name]);
-  const qrUrl = useMemo(() => permanentUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=16&data=${encodeURIComponent(permanentUrl)}` : "", [permanentUrl]);
 
   function openAuth(nextMode = "login") {
     setMode(nextMode); setError(""); setMessage(""); setPassword(""); setShowPassword(false); setShowAuth(true);
@@ -73,6 +67,7 @@ export default function AuthGate({ children }) {
     setBusy(false);
     if (authError) { setError("Login ID ya password galat hai."); return; }
     setSession(data.session); setShowAuth(false); setPassword("");
+    window.location.reload();
   }
 
   async function signup(e) {
@@ -81,13 +76,10 @@ export default function AuthGate({ children }) {
     if (!loginId.trim() || !password) { setError("Gmail/Email aur password enter karein."); return; }
     if (password.length < 6) { setError("Password kam se kam 6 characters ka hona chahiye."); return; }
     setBusy(true);
-    const { data, error: authError } = await supabase.auth.signUp({
-      email: loginId.trim(), password,
-      options: { data: { full_name: fullName.trim() } }
-    });
+    const { data, error: authError } = await supabase.auth.signUp({ email: loginId.trim(), password, options: { data: { full_name: fullName.trim() } } });
     setBusy(false);
     if (authError) { setError(authError.message || "Account create nahi ho saka."); return; }
-    if (data.session) { setSession(data.session); setShowAuth(false); }
+    if (data.session) { setSession(data.session); setShowAuth(false); window.location.reload(); }
     else { setMessage("Account ban gaya. Email inbox me verification link check karein, phir Login karein."); setMode("login"); }
     setPassword("");
   }
@@ -122,16 +114,7 @@ export default function AuthGate({ children }) {
     setPassword(""); setMode("login"); setShowAuth(false);
   }
 
-  async function logout() { await supabase?.auth.signOut(); setSession(null); }
-
-  async function downloadQr() {
-    if (!qrUrl) return;
-    try {
-      const res = await fetch(qrUrl); const blob = await res.blob(); const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url; a.download = `PrintBhejo-${name.replace(/[^a-z0-9_-]+/gi, "-")}-QR.png`; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch { window.open(qrUrl, "_blank", "noopener,noreferrer"); }
-  }
+  async function logout() { await supabase?.auth.signOut(); setSession(null); window.location.reload(); }
 
   if (session === undefined) return <div className="auth-loading">PrintBhejo loading…</div>;
 
@@ -180,7 +163,6 @@ export default function AuthGate({ children }) {
 
   return <>
     {headerTarget && createPortal(headerControls, headerTarget)}
-    {session && <div className="permanent-qr-panel pb-qr-first"><div><span className="qr-badge">PERMANENT QR</span><h2>{name}</h2><p>Ye aapka permanent receiving QR hai. Isse koi bhi person bina login kiye aapko file bhej sakta hai.</p><code>{permanentUrl}</code></div><img src={qrUrl} alt={`Permanent QR for ${name}`}/><button onClick={downloadQr}><Download size={17}/> Download QR</button></div>}
     {children}
     {authModal}{resetModal}
   </>;
