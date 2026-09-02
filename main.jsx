@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import App from "./App";
 import "./styles.css";
 import "./ui-overrides.css";
+import "./batch-ui.css";
 import "./converter-tools.css";
 import "./free-tools-replacement.css";
 import "./free-tools-placement.css";
