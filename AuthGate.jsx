@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Download, LogIn, LogOut, QrCode, User, X } from "lucide-react";
 import { supabase } from "./config";
 import "./auth-ui.css";
@@ -66,48 +67,16 @@ export default function AuthGate({ children }) {
 
   if (session === undefined) return <div className="auth-loading">PrintBhejo loading…</div>;
 
+  const headerControls = !session ? (
+    <button className="header-login-button" onClick={() => { setError(""); setShowLogin(true); }}><LogIn size={18}/> Login</button>
+  ) : (
+    <div className="header-user-controls"><span className="header-user-name"><User size={17}/> {name}</span><span className="qr-first-badge"><QrCode size={15}/> Your QR</span><button onClick={logout}><LogOut size={16}/> Logout</button></div>
+  );
+
   return <>
-    {session ? (
-      <>
-        <div className="user-bar">
-          <div className="user-identity"><User size={18}/><span>{name}</span></div>
-          <span className="qr-first-badge"><QrCode size={16}/> Your QR</span>
-          <button onClick={logout}><LogOut size={17}/> Logout</button>
-        </div>
-        <div className="permanent-qr-panel pb-qr-first">
-          <div>
-            <span className="qr-badge">PERMANENT QR</span>
-            <h2>{name}</h2>
-            <p>Ye aapka permanent receiving QR hai. Isse koi bhi person bina login kiye aapko file bhej sakta hai.</p>
-            <code>{permanentUrl}</code>
-          </div>
-          <img src={qrUrl} alt={`Permanent QR for ${name}`}/>
-          <button onClick={downloadQr}><Download size={17}/> Download QR</button>
-        </div>
-      </>
-    ) : (
-      <div className="guest-login-bar">
-        <div className="guest-brand"><img src="/printbhejo-logo-new.png" alt="PrintBhejo"/> <strong>PrintBhejo</strong></div>
-        <button className="login-top-button" onClick={() => { setError(""); setShowLogin(true); }}><LogIn size={17}/> Login</button>
-      </div>
-    )}
-
+    {createPortal(headerControls, document.querySelector(".header") || document.body)}
+    {session && <div className="permanent-qr-panel pb-qr-first"><div><span className="qr-badge">PERMANENT QR</span><h2>{name}</h2><p>Ye aapka permanent receiving QR hai. Isse koi bhi person bina login kiye aapko file bhej sakta hai.</p><code>{permanentUrl}</code></div><img src={qrUrl} alt={`Permanent QR for ${name}`}/><button onClick={downloadQr}><Download size={17}/> Download QR</button></div>}
     {children}
-
-    {!session && showLogin && <div className="login-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setShowLogin(false)}>
-      <div className="auth-card login-modal" role="dialog" aria-modal="true">
-        <button className="login-close" onClick={() => setShowLogin(false)} aria-label="Close"><X size={20}/></button>
-        <div className="auth-logo"><img src="/printbhejo-logo-new.png" alt="PrintBhejo" /></div>
-        <h1>Login to PrintBhejo</h1>
-        <p>Login optional hai. Login karke apna permanent QR dekhein.</p>
-        <form onSubmit={login}>
-          <label>Login ID<input value={loginId} onChange={e => setLoginId(e.target.value)} autoComplete="username" placeholder="Enter Login ID" /></label>
-          <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="Enter Password" /></label>
-          {error && <div className="auth-error">{error}</div>}
-          <button className="auth-primary" disabled={busy}>{busy ? "Logging in…" : "Login →"}</button>
-        </form>
-        <small>Without login bhi file transfer normally kaam karega.</small>
-      </div>
-    </div>}
+    {!session && showLogin && <div className="login-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setShowLogin(false)}><div className="auth-card login-modal" role="dialog" aria-modal="true"><button className="login-close" onClick={() => setShowLogin(false)} aria-label="Close"><X size={20}/></button><div className="auth-logo"><img src="/printbhejo-logo-new.png" alt="PrintBhejo" /></div><h1>Login to PrintBhejo</h1><p>Login optional hai. Login karke apna permanent QR dekhein.</p><form onSubmit={login}><label>Login ID<input value={loginId} onChange={e => setLoginId(e.target.value)} autoComplete="username" placeholder="Enter Login ID" /></label><label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder="Enter Password" /></label>{error && <div className="auth-error">{error}</div>}<button className="auth-primary" disabled={busy}>{busy ? "Logging in…" : "Login →"}</button></form><small>Without login bhi file transfer normally kaam karega.</small></div></div>}
   </>;
 }
