@@ -7,7 +7,7 @@ const PERMANENT_SESSION_EXPIRY = "2099-12-31T23:59:59.000Z";
 
 export function makePeerId() { const bytes = crypto.getRandomValues(new Uint8Array(16)); return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join(""); }
 
-function generatePin() { return String(Math.floor(100000 + Math.random() * 900000)); }
+function generatePin() { const letters="ABCDEFGHJKLMNPQRSTUVWXYZ"; const values=crypto.getRandomValues(new Uint32Array(4)); return letters[values[0]%letters.length]+values.slice(1).map(n=>String(n%10)).join(""); }
 
 async function getPermanentPin() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,18 +22,18 @@ async function getPermanentPin() {
     profile = created;
   }
 
-  if (profile?.permanent_pin) return profile.permanent_pin;
+  if (profile?.permanent_pin && /^[A-Z][0-9]{3}$/.test(profile.permanent_pin)) return profile.permanent_pin;
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const pin = generatePin();
-    const { data: updated, error: updateError } = await supabase.from("profiles").update({ permanent_pin: pin }).eq("id", user.id).is("permanent_pin", null).select("permanent_pin").maybeSingle();
+    const { data: updated, error: updateError } = await supabase.from("profiles").update({ permanent_pin: pin }).eq("id", user.id).select("permanent_pin").maybeSingle();
     if (updateError) {
       if (updateError.code === "23505") continue;
       throw updateError;
     }
     if (updated?.permanent_pin) return updated.permanent_pin;
     const { data: latest } = await supabase.from("profiles").select("permanent_pin").eq("id", user.id).maybeSingle();
-    if (latest?.permanent_pin) return latest.permanent_pin;
+    if (latest?.permanent_pin && /^[A-Z][0-9]{3}$/.test(latest.permanent_pin)) return latest.permanent_pin;
   }
   throw new Error("Permanent PIN generate nahi ho saka. Please try again.");
 }
@@ -53,7 +53,7 @@ export async function createSession(pin) {
   const { data, error } = await supabase.from("transfer_sessions").insert({ pin: sessionPin, expires_at: expires, status: "active" }).select("id,pin,created_at,expires_at,status").single();
   if (error) {
     if (permanentPin && error.code === "23505") {
-      const { data: existing } = await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin", sessionPin).eq("status", "active").maybeSingle();
+      const { data: existing } = await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin",sessionPin).eq("status","active").maybeSingle();
       if (existing) return existing;
     }
     throw error;
