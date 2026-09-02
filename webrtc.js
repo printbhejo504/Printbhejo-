@@ -12,24 +12,14 @@ export function makePeerId() {
 export async function createSession(pin) {
   if (!supabase) throw new Error("Supabase is not configured.");
   const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-  const { data, error } = await supabase
-    .from("transfer_sessions")
-    .insert({ pin, expires_at: expires, status: "active" })
-    .select("id,pin,created_at,expires_at,status")
-    .single();
+  const { data, error } = await supabase.from("transfer_sessions").insert({ pin, expires_at: expires, status: "active" }).select("id,pin,created_at,expires_at,status").single();
   if (error) throw error;
   return data;
 }
 
 export async function findSession(pin) {
   if (!supabase) throw new Error("Supabase is not configured.");
-  const { data, error } = await supabase
-    .from("transfer_sessions")
-    .select("id,pin,created_at,expires_at,status")
-    .eq("pin", pin)
-    .eq("status", "active")
-    .gt("expires_at", new Date().toISOString())
-    .maybeSingle();
+  const { data, error } = await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin", pin).eq("status", "active").gt("expires_at", new Date().toISOString()).maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -37,31 +27,15 @@ export async function findSession(pin) {
 export async function sendSignal(sessionId, senderId, type, payload) {
   if (!supabase) throw new Error("Supabase is not configured.");
   const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-  const { error } = await supabase.from("webrtc_signals").insert({
-    session_id: sessionId,
-    sender_id: senderId,
-    type,
-    payload,
-    expires_at: expires
-  });
+  const { error } = await supabase.from("webrtc_signals").insert({ session_id: sessionId, sender_id: senderId, type, payload, expires_at: expires });
   if (error) throw error;
 }
 
 export function subscribeSignals(sessionId, callback, onError) {
   if (!supabase) throw new Error("Supabase is not configured.");
-  const channel = supabase
-    .channel(`printbhejo-signals-${sessionId}-${Math.random().toString(36).slice(2)}`)
-    .on("postgres_changes", {
-      event: "INSERT",
-      schema: "public",
-      table: "webrtc_signals",
-      filter: `session_id=eq.${sessionId}`
-    }, payload => callback(payload.new))
-    .subscribe(status => {
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        onError?.(new Error(`Supabase Realtime ${status.toLowerCase().replace("_", " ")}.`));
-      }
-    });
+  const channel = supabase.channel(`printbhejo-signals-${sessionId}-${Math.random().toString(36).slice(2)}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "webrtc_signals", filter: `session_id=eq.${sessionId}` }, payload => callback(payload.new)).subscribe(status => {
+    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") onError?.(new Error(`Supabase Realtime ${status.toLowerCase().replace("_", " ")}.`));
+  });
   return () => { supabase.removeChannel(channel); };
 }
 
@@ -70,44 +44,27 @@ function waitForBufferedAmountLow(channel) {
     if (channel.bufferedAmount <= LOW_BUFFERED) return resolve();
     const previous = channel.onbufferedamountlow;
     channel.bufferedAmountLowThreshold = LOW_BUFFERED;
-    channel.onbufferedamountlow = () => {
-      channel.onbufferedamountlow = previous;
-      resolve();
-    };
+    channel.onbufferedamountlow = () => { channel.onbufferedamountlow = previous; resolve(); };
   });
 }
 
-export async function sendFileOverDataChannel(channel, file, onProgress) {
+export async function sendFileOverDataChannel(channel, file, onProgress, batchId) {
   const fileId = crypto.randomUUID();
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-
-  channel.send(JSON.stringify({
-    type: "file-start",
-    fileId,
-    fileName: file.name,
-    fileType: file.type || "application/octet-stream",
-    fileSize: file.size,
-    totalChunks
-  }));
-
+  channel.send(JSON.stringify({ type: "file-start", fileId, batchId, fileName: file.name, fileType: file.type || "application/octet-stream", fileSize: file.size, totalChunks }));
   let offset = 0;
   let index = 0;
-
   while (offset < file.size) {
     if (channel.readyState !== "open") throw new Error("P2P connection closed.");
     if (channel.bufferedAmount > MAX_BUFFERED) await waitForBufferedAmountLow(channel);
-
     const chunk = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
     channel.send(chunk);
-
     offset += chunk.byteLength;
     index++;
     onProgress?.({ sent: offset, total: file.size, percent: Math.round(offset / file.size * 100) });
-
     if (index % 16 === 0) await new Promise(r => setTimeout(r, 0));
   }
-
-  channel.send(JSON.stringify({ type: "file-complete", fileId }));
+  channel.send(JSON.stringify({ type: "file-complete", fileId, batchId }));
 }
 
 export function createReceiverPeer({ sessionId, peerId, onFile, onStatus }) {
@@ -117,7 +74,6 @@ export function createReceiverPeer({ sessionId, peerId, onFile, onStatus }) {
   const pendingIce = [];
   const messageQueue = [];
   let processingQueue = false;
-
   const processMessageQueue = async () => {
     if (processingQueue) return;
     processingQueue = true;
@@ -131,9 +87,7 @@ export function createReceiverPeer({ sessionId, peerId, onFile, onStatus }) {
             current = { ...msg, chunks: [], received: 0 };
             onStatus?.("receiving", 0, msg.fileSize);
           } else if (msg.type === "file-complete" && current?.fileId === msg.fileId) {
-            if (current.received !== current.fileSize) {
-              throw new Error(`Incomplete file received: ${current.fileName}`);
-            }
+            if (current.received !== current.fileSize) throw new Error(`Incomplete file received: ${current.fileName}`);
             const finished = current;
             current = null;
             const blob = new Blob(finished.chunks, { type: finished.fileType });
@@ -153,25 +107,15 @@ export function createReceiverPeer({ sessionId, peerId, onFile, onStatus }) {
       if (messageQueue.length) processMessageQueue();
     }
   };
-
   const channelHandler = channel => {
     channel.binaryType = "arraybuffer";
     channel.onopen = () => onStatus?.("connected");
     channel.onclose = () => onStatus?.("disconnected");
     channel.onerror = () => onStatus?.("error");
-
-    channel.onmessage = event => {
-      messageQueue.push(event.data);
-      processMessageQueue();
-    };
+    channel.onmessage = event => { messageQueue.push(event.data); processMessageQueue(); };
   };
-
   pc.ondatachannel = e => channelHandler(e.channel);
-
-  pc.onicecandidate = e => {
-    if (e.candidate) sendSignal(sessionId, peerId, "ice-candidate", e.candidate.toJSON()).catch(() => {});
-  };
-
+  pc.onicecandidate = e => { if (e.candidate) sendSignal(sessionId, peerId, "ice-candidate", e.candidate.toJSON()).catch(() => {}); };
   return {
     pc,
     handleOffer: async offer => {
@@ -182,11 +126,7 @@ export function createReceiverPeer({ sessionId, peerId, onFile, onStatus }) {
       await pc.setLocalDescription(answer);
       await sendSignal(sessionId, peerId, "answer", answer);
     },
-    addIce: async candidate => {
-      if (!candidate) return;
-      if (!remoteDescriptionSet) pendingIce.push(candidate);
-      else await pc.addIceCandidate(candidate);
-    },
+    addIce: async candidate => { if (!candidate) return; if (!remoteDescriptionSet) pendingIce.push(candidate); else await pc.addIceCandidate(candidate); },
     close: () => pc.close()
   };
 }
@@ -197,34 +137,26 @@ export function createSenderPeer({ sessionId, peerId, onStatus, onProgress }) {
   channel.binaryType = "arraybuffer";
   let remoteDescriptionSet = false;
   const pendingIce = [];
-
+  let activeBatchId = null;
+  let lastFileCompletedAt = 0;
+  const newBatch = () => crypto.randomUUID();
   channel.onopen = () => onStatus?.("connected");
   channel.onclose = () => onStatus?.("disconnected");
   channel.onerror = () => onStatus?.("error");
-
-  pc.onicecandidate = e => {
-    if (e.candidate) sendSignal(sessionId, peerId, "ice-candidate", e.candidate.toJSON()).catch(() => {});
-  };
-
+  pc.onicecandidate = e => { if (e.candidate) sendSignal(sessionId, peerId, "ice-candidate", e.candidate.toJSON()).catch(() => {}); };
   return {
     pc,
     channel,
-    createOffer: async () => {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await sendSignal(sessionId, peerId, "offer", offer);
+    createOffer: async () => { const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await sendSignal(sessionId, peerId, "offer", offer); },
+    handleAnswer: async answer => { await pc.setRemoteDescription(answer); remoteDescriptionSet = true; while (pendingIce.length) await pc.addIceCandidate(pendingIce.shift()); },
+    addIce: async candidate => { if (!candidate) return; if (!remoteDescriptionSet) pendingIce.push(candidate); else await pc.addIceCandidate(candidate); },
+    sendFile: async file => {
+      if (!activeBatchId || Date.now() - lastFileCompletedAt > 500) activeBatchId = newBatch();
+      const batch = activeBatchId;
+      await sendFileOverDataChannel(channel, file, onProgress, batch);
+      lastFileCompletedAt = Date.now();
+      return batch;
     },
-    handleAnswer: async answer => {
-      await pc.setRemoteDescription(answer);
-      remoteDescriptionSet = true;
-      while (pendingIce.length) await pc.addIceCandidate(pendingIce.shift());
-    },
-    addIce: async candidate => {
-      if (!candidate) return;
-      if (!remoteDescriptionSet) pendingIce.push(candidate);
-      else await pc.addIceCandidate(candidate);
-    },
-    sendFile: file => sendFileOverDataChannel(channel, file, onProgress),
     close: () => pc.close()
   };
 }
