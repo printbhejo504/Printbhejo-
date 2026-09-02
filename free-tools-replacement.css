@@ -1,13 +1,16 @@
-/* Keep the original Free Tools section visible above Important Links. */
-.converter-fab {
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
+/* The old Free Tools block is replaced by the modern browser-only converter. */
+.section:has(.tools-grid) {
+  display: none !important;
+}
+
+.converter-tools-slot {
+  width: 100%;
+  display: block;
+  margin: 24px 0 18px;
 }
 
 @media (max-width: 720px) {
-  .converter-fab {
-    right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    max-width: calc(100vw - 24px);
+  .converter-tools-slot {
+    margin: 20px 0 14px;
   }
 }
