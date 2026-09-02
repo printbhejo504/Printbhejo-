@@ -29,6 +29,62 @@ class AppErrorBoundary extends Component {
   }
 }
 
+function enhanceTransferUI() {
+  const tabs = document.querySelector(".tabs");
+  if (tabs) {
+    const buttons = Array.from(tabs.querySelectorAll("button"));
+    const send = buttons.find(b => /send/i.test(b.textContent || ""));
+    const receive = buttons.find(b => /receive/i.test(b.textContent || ""));
+    if (send && receive) {
+      send.style.order = "1";
+      receive.style.order = "2";
+      if (!tabs.dataset.pbOrderSet) {
+        tabs.dataset.pbOrderSet = "1";
+        setTimeout(() => send.click(), 80);
+      }
+    }
+  }
+
+  const uploadArea = document.querySelector(".upload-area");
+  if (uploadArea) {
+    const success = document.querySelector(".notice")?.textContent?.includes("Files sent successfully");
+    if (success) {
+      document.querySelectorAll(".selected-list .selected > button").forEach(btn => btn.click());
+      if (!uploadArea.querySelector(".pb-send-again")) {
+        const btn = document.createElement("button");
+        btn.className = "secondary pb-send-again";
+        btn.type = "button";
+        btn.textContent = "＋ Send Another File";
+        btn.addEventListener("click", () => uploadArea.querySelector('.dropzone input[type="file"]')?.click());
+        uploadArea.appendChild(btn);
+      }
+    }
+  }
+
+  const grids = Array.from(document.querySelectorAll(".file-grid"));
+  if (grids.length) {
+    import("./idb").then(async ({listFiles}) => {
+      const records = (await listFiles()).filter(f => f.expiresAt > Date.now()).sort((a,b) => b.receivedAt-a.receivedAt);
+      grids.forEach(grid => {
+        const cards = Array.from(grid.querySelectorAll(":scope > .file-card"));
+        cards.forEach((card, i) => {
+          const record = records[i];
+          if (!record) return;
+          const batch = record.batchId || `legacy-${record.id}`;
+          card.dataset.pbBatch = batch;
+          card.dataset.pbBatchFirst = "0";
+          card.removeAttribute("data-pb-batch-label");
+          const batchRecords = records.filter(r => (r.batchId || `legacy-${r.id}`) === batch);
+          if (i === records.findIndex(r => (r.batchId || `legacy-${r.id}`) === batch)) {
+            card.dataset.pbBatchFirst = "1";
+            card.dataset.pbBatchLabel = `Batch • ${batchRecords.length} ${batchRecords.length === 1 ? "file" : "files"}`;
+          }
+        });
+      });
+    }).catch(() => {});
+  }
+}
+
 function Root() {
   const [toolsHost, setToolsHost] = useState(null);
 
@@ -39,10 +95,17 @@ function Root() {
     host.className = "converter-tools-slot";
     target.parentNode.insertBefore(host, target);
     setToolsHost(host);
-    return () => {
-      host.remove();
-      setToolsHost(null);
-    };
+    return () => { host.remove(); setToolsHost(null); };
+  }, []);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      window.clearTimeout(window.__pbEnhanceTimer);
+      window.__pbEnhanceTimer = window.setTimeout(enhanceTransferUI, 40);
+    });
+    observer.observe(document.body, {childList:true, subtree:true});
+    enhanceTransferUI();
+    return () => { observer.disconnect(); window.clearTimeout(window.__pbEnhanceTimer); };
   }, []);
 
   return <>
@@ -56,6 +119,4 @@ function Root() {
   </>;
 }
 
-createRoot(document.getElementById("root")).render(
-  <AppErrorBoundary><Root /></AppErrorBoundary>
-);
+createRoot(document.getElementById("root")).render(<AppErrorBoundary><Root /></AppErrorBoundary>);
