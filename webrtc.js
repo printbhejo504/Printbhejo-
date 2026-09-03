@@ -57,7 +57,31 @@ export async function createSession(pin) {
 export async function findSession(pin) { if (!supabase) throw new Error("Supabase is not configured."); const normalized=String(pin||"").trim().toUpperCase(); const {data,error}=await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin",normalized).eq("status","active").gt("expires_at",new Date().toISOString()).maybeSingle(); if(error)throw error; return data; }
 export async function sendSignal(sessionId,senderId,type,payload){if(!supabase)throw new Error("Supabase is not configured.");const expires=new Date(Date.now()+10*60*1000).toISOString();const{error}=await supabase.from("webrtc_signals").insert({session_id:sessionId,sender_id:senderId,type,payload,expires_at:expires});if(error)throw error;}
 export function subscribeSignals(sessionId,callback,onError){if(!supabase)throw new Error("Supabase is not configured.");const channel=supabase.channel(`printbhejo-signals-${sessionId}-${Math.random().toString(36).slice(2)}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"webrtc_signals",filter:`session_id=eq.${sessionId}`},payload=>callback(payload.new)).subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")onError?.(new Error(`Supabase Realtime ${status.toLowerCase().replace("_"," ")}.`));});return()=>{supabase.removeChannel(channel);};}
-function waitForBufferedAmountLow(channel){return new Promise(resolve=>{if(channel.bufferedAmount<=LOW_BUFFERED)return resolve();const previous=channel.onbufferedamountlow;channel.bufferedAmountLowThreshold=LOW_BUFFERED;channel.onbufferedamountlow=()=>{channel.onbufferedamountlow=previous;resolve();};});}
+
+async function waitForBufferedAmountLow(channel){
+  while(channel.bufferedAmount>LOW_BUFFERED){
+    if(channel.readyState!=="open")throw new Error("P2P connection closed while sending.");
+    await new Promise(resolve=>setTimeout(resolve,20));
+  }
+}
+
+function waitForFileAck(channel,fileId,timeout=30000){
+  return new Promise((resolve,reject)=>{
+    const previous=channel.onmessage;
+    const timer=setTimeout(()=>{channel.onmessage=previous||null;reject(new Error("Receiver did not confirm the file. Please try sending again."));},timeout);
+    channel.onmessage=event=>{
+      if(typeof event.data==="string"){
+        try{
+          const msg=JSON.parse(event.data);
+          if(msg.type==="file-ack"&&msg.fileId===fileId){
+            clearTimeout(timer);channel.onmessage=previous||null;resolve();return;
+          }
+        }catch{}
+      }
+      if(previous)previous.call(channel,event);
+    };
+  });
+}
 
 export async function sendFileOverDataChannel(channel,file,onProgress,batchId){
   if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");
@@ -74,7 +98,7 @@ export async function sendFileOverDataChannel(channel,file,onProgress,batchId){
     if(index%16===0)await new Promise(r=>setTimeout(r,0));
   }
   channel.send(JSON.stringify({type:"file-complete",fileId,batchId}));
-  await new Promise(resolve=>setTimeout(resolve,20));
+  await waitForFileAck(channel,fileId);
 }
 
 export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
@@ -97,6 +121,7 @@ export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
             const finished=current; current=null;
             const blob=new Blob(finished.chunks,{type:finished.fileType});
             await onFile?.({...finished,blob});
+            if(channel.readyState==="open")channel.send(JSON.stringify({type:"file-ack",fileId:finished.fileId,batchId:finished.batchId}));
             onStatus?.("file-complete",finished.received,finished.fileSize);
           }
         }else if(current){current.chunks.push(data);current.received+=data.byteLength;onStatus?.("receiving",current.received,current.fileSize);}
