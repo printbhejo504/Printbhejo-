@@ -140,7 +140,7 @@ export function createSenderPeer({sessionId,peerId,onStatus,onProgress}){
     createOffer:async()=>{const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal(sessionId,peerId,"offer",offer);},
     handleAnswer:async answer=>{await pc.setRemoteDescription(answer);remoteDescriptionSet=true;while(pendingIce.length)await pc.addIceCandidate(pendingIce.shift());},
     addIce:async candidate=>{if(!candidate)return;if(!remoteDescriptionSet)pendingIce.push(candidate);else await pc.addIceCandidate(candidate);},
-    sendFile:file=>{sendQueue=sendQueue.then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId||Date.now()-lastFileCompletedAt>500)activeBatchId=crypto.randomUUID();const batch=activeBatchId;await sendFileOverDataChannel(channel,file,onProgress,batch);lastFileCompletedAt=Date.now();return batch;});return sendQueue;},
+    sendFile:file=>{sendQueue=sendQueue.catch(()=>{}).then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId||Date.now()-lastFileCompletedAt>500)activeBatchId=crypto.randomUUID();const batch=activeBatchId;await sendFileOverDataChannel(channel,file,onProgress,batch);lastFileCompletedAt=Date.now();return batch;});return sendQueue;},
     close:()=>pc.close()
   };
 }
