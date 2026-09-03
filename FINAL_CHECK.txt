@@ -1,0 +1,1 @@
+Transfer fixes ready for Cloudflare Pages build.
