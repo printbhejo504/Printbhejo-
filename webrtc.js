@@ -7,7 +7,6 @@ const PERMANENT_SESSION_EXPIRY = "2099-12-31T23:59:59.000Z";
 const FILE_ACK_TIMEOUT = 30000;
 
 export function makePeerId() { const bytes = crypto.getRandomValues(new Uint8Array(16)); return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join(""); }
-
 function generatePin() { const letters="ABCDEFGHJKLMNPQRSTUVWXYZ"; const values=crypto.getRandomValues(new Uint32Array(4)); return letters[values[0]%letters.length]+values.slice(1).map(n=>String(n%10)).join(""); }
 
 async function getPermanentPin() {
@@ -24,10 +23,7 @@ async function getPermanentPin() {
   for (let attempt = 0; attempt < 8; attempt++) {
     const pin = generatePin();
     const { data: updated, error: updateError } = await supabase.from("profiles").update({ permanent_pin: pin }).eq("id", user.id).select("permanent_pin").maybeSingle();
-    if (updateError) {
-      if (updateError.code === "23505") continue;
-      throw updateError;
-    }
+    if (updateError) { if (updateError.code === "23505") continue; throw updateError; }
     if (updated?.permanent_pin) return updated.permanent_pin;
     const { data: latest } = await supabase.from("profiles").select("permanent_pin").eq("id", user.id).maybeSingle();
     if (latest?.permanent_pin && /^[A-Z][0-9]{3}$/.test(latest.permanent_pin)) return latest.permanent_pin;
@@ -43,10 +39,7 @@ export async function createSession(pin) {
   if (permanentPin) {
     const { data: ensured, error: ensureError } = await supabase.rpc("ensure_permanent_transfer_session", { p_pin: permanentPin });
     if (ensureError) throw ensureError;
-    if (ensured) {
-      const row = Array.isArray(ensured) ? ensured[0] : ensured;
-      if (row?.id) return row;
-    }
+    if (ensured) { const row = Array.isArray(ensured) ? ensured[0] : ensured; if (row?.id) return row; }
     const { data: existing, error: findError } = await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin", sessionPin).eq("status", "active").gt("expires_at", new Date().toISOString()).maybeSingle();
     if (findError) throw findError;
     if (existing) return existing;
@@ -77,22 +70,20 @@ export async function sendFileOverDataChannel(channel,file,onProgress,batchId){
     if(channel.readyState!=="open")throw new Error("P2P connection closed.");
     if(channel.bufferedAmount>MAX_BUFFERED)await waitForBufferedAmountLow(channel);
     const chunk=await file.slice(offset,offset+CHUNK_SIZE).arrayBuffer();
-    channel.send(chunk);
-    offset+=chunk.byteLength;
-    index++;
+    channel.send(chunk); offset+=chunk.byteLength; index++;
     onProgress?.({sent:offset,total:file.size,percent:Math.round(offset/file.size*100)});
     if(index%16===0)await new Promise(r=>setTimeout(r,0));
   }
   const ack=new Promise((resolve,reject)=>{
     let timer=setTimeout(()=>{cleanup();reject(new Error("Receiver did not confirm the file. Please try again."));},FILE_ACK_TIMEOUT);
     const previous=channel.onmessage;
-    const cleanup=()=>{clearTimeout(timer);if(channel.onmessage===handler)channel.onmessage=previous;};
     const handler=event=>{
       if(typeof event.data==="string"){
         try{const msg=JSON.parse(event.data);if(msg.type==="file-ack"&&msg.fileId===fileId){cleanup();resolve();return;}}catch{}
       }
       previous?.(event);
     };
+    const cleanup=()=>{clearTimeout(timer);if(channel.onmessage===handler)channel.onmessage=previous;};
     channel.onmessage=handler;
   });
   channel.send(JSON.stringify({type:"file-complete",fileId,batchId}));
@@ -104,23 +95,21 @@ export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
   let current=null,remoteDescriptionSet=false;
   const pendingIce=[],messageQueue=[];let processingQueue=false;
   const processMessageQueue=async()=>{
-    if(processingQueue)return;
-    processingQueue=true;
+    if(processingQueue)return; processingQueue=true;
     try{
       while(messageQueue.length){
-        const data=messageQueue.shift();
+        const item=messageQueue.shift(); const data=item.data; const channel=item.channel;
         if(typeof data==="string"){
           const msg=JSON.parse(data);
           if(msg.type==="file-start"){
             if(current)throw new Error("Received a new file before the previous file was finalized.");
-            current={...msg,fileId:msg.fileId,batchId:msg.batchId||String(msg.fileId||"").split(":")[0],chunks:[],received:0};
+            current={...msg,fileId:msg.fileId,batchId:msg.batchId||String(msg.fileId||"").split(":")[0],chunks:[],received:0,channel};
             onStatus?.("receiving",0,msg.fileSize);
           }else if(msg.type==="file-complete"&&current?.fileId===msg.fileId){
             if(current.received!==current.fileSize)throw new Error(`Incomplete file received: ${current.fileName}`);
-            const finished=current;current=null;
+            const finished=current; current=null;
             const blob=new Blob(finished.chunks,{type:finished.fileType});
             await onFile?.({...finished,blob});
-            const channel=finished.channel;
             if(channel?.readyState==="open")channel.send(JSON.stringify({type:"file-ack",fileId:finished.fileId,batchId:finished.batchId}));
           }
         }else if(current){current.chunks.push(data);current.received+=data.byteLength;onStatus?.("receiving",current.received,current.fileSize);}
@@ -133,7 +122,7 @@ export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
     channel.onopen=()=>onStatus?.("connected");
     channel.onclose=()=>onStatus?.("disconnected");
     channel.onerror=()=>onStatus?.("error");
-    channel.onmessage=event=>{if(typeof event.data==="string"){try{const msg=JSON.parse(event.data);if(msg.type==="file-start"){} }catch{}};if(current){};messageQueue.push(event.data);if(typeof event.data==="string"&&messageQueue.length){const last=messageQueue[messageQueue.length-1];if(typeof last==="string"){try{const m=JSON.parse(last);if(m.type==="file-start")current={...m,fileId:m.fileId,batchId:m.batchId||String(m.fileId||"").split(":")[0],chunks:[],received:0,channel};}catch{}}}processMessageQueue();};
+    channel.onmessage=event=>{messageQueue.push({data:event.data,channel});processMessageQueue();};
   };
   pc.ondatachannel=e=>channelHandler(e.channel);
   pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",e.candidate.toJSON()).catch(()=>{});};
@@ -142,29 +131,16 @@ export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
 
 export function createSenderPeer({sessionId,peerId,onStatus,onProgress}){
   const pc=new RTCPeerConnection({iceServers:ICE_SERVERS});
-  const channel=pc.createDataChannel("files",{ordered:true});
-  channel.binaryType="arraybuffer";
+  const channel=pc.createDataChannel("files",{ordered:true}); channel.binaryType="arraybuffer";
   let remoteDescriptionSet=false;const pendingIce=[];let activeBatchId=null,lastFileCompletedAt=0;let sendQueue=Promise.resolve();
-  channel.onopen=()=>onStatus?.("connected");
-  channel.onclose=()=>onStatus?.("disconnected");
-  channel.onerror=()=>onStatus?.("error");
+  channel.onopen=()=>onStatus?.("connected"); channel.onclose=()=>onStatus?.("disconnected"); channel.onerror=()=>onStatus?.("error");
   pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",e.candidate.toJSON()).catch(()=>{});};
   return{
     pc,channel,
     createOffer:async()=>{const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal(sessionId,peerId,"offer",offer);},
     handleAnswer:async answer=>{await pc.setRemoteDescription(answer);remoteDescriptionSet=true;while(pendingIce.length)await pc.addIceCandidate(pendingIce.shift());},
     addIce:async candidate=>{if(!candidate)return;if(!remoteDescriptionSet)pendingIce.push(candidate);else await pc.addIceCandidate(candidate);},
-    sendFile:file=>{
-      sendQueue=sendQueue.then(async()=>{
-        if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");
-        if(!activeBatchId||Date.now()-lastFileCompletedAt>500)activeBatchId=crypto.randomUUID();
-        const batch=activeBatchId;
-        await sendFileOverDataChannel(channel,file,onProgress,batch);
-        lastFileCompletedAt=Date.now();
-        return batch;
-      });
-      return sendQueue;
-    },
+    sendFile:file=>{sendQueue=sendQueue.then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId||Date.now()-lastFileCompletedAt>500)activeBatchId=crypto.randomUUID();const batch=activeBatchId;await sendFileOverDataChannel(channel,file,onProgress,batch);lastFileCompletedAt=Date.now();return batch;});return sendQueue;},
     close:()=>pc.close()
   };
 }
