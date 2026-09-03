@@ -44,7 +44,18 @@ export async function createSession(pin) {
   const sessionPin = permanentPin || pin;
   const expires = permanentPin ? PERMANENT_SESSION_EXPIRY : new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
+  // Logged-in receiver sessions are repaired/created through the server-side
+  // function. This makes an old QR/PIN usable again even if its previous
+  // transfer_sessions row had expired or was missing.
   if (permanentPin) {
+    const { data: ensured, error: ensureError } = await supabase.rpc("ensure_permanent_transfer_session", { p_pin: permanentPin });
+    if (ensureError) throw ensureError;
+    if (ensured) {
+      const row = Array.isArray(ensured) ? ensured[0] : ensured;
+      if (row?.id) return row;
+    }
+
+    // Fallback for an older database where the RPC has not been deployed yet.
     const { data: existing, error: findError } = await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin", sessionPin).eq("status", "active").gt("expires_at", new Date().toISOString()).maybeSingle();
     if (findError) throw findError;
     if (existing) return existing;
@@ -61,7 +72,7 @@ export async function createSession(pin) {
   return data;
 }
 
-export async function findSession(pin) { if (!supabase) throw new Error("Supabase is not configured."); const {data,error}=await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin",pin).eq("status","active").gt("expires_at",new Date().toISOString()).maybeSingle(); if(error)throw error; return data; }
+export async function findSession(pin) { if (!supabase) throw new Error("Supabase is not configured."); const normalized=String(pin||"").trim().toUpperCase(); const {data,error}=await supabase.from("transfer_sessions").select("id,pin,created_at,expires_at,status").eq("pin",normalized).eq("status","active").gt("expires_at",new Date().toISOString()).maybeSingle(); if(error)throw error; return data; }
 export async function sendSignal(sessionId,senderId,type,payload){if(!supabase)throw new Error("Supabase is not configured.");const expires=new Date(Date.now()+10*60*1000).toISOString();const{error}=await supabase.from("webrtc_signals").insert({session_id:sessionId,sender_id:senderId,type,payload,expires_at:expires});if(error)throw error;}
 export function subscribeSignals(sessionId,callback,onError){if(!supabase)throw new Error("Supabase is not configured.");const channel=supabase.channel(`printbhejo-signals-${sessionId}-${Math.random().toString(36).slice(2)}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"webrtc_signals",filter:`session_id=eq.${sessionId}`},payload=>callback(payload.new)).subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")onError?.(new Error(`Supabase Realtime ${status.toLowerCase().replace("_"," ")}.`));});return()=>{supabase.removeChannel(channel);};}
 function waitForBufferedAmountLow(channel){return new Promise(resolve=>{if(channel.bufferedAmount<=LOW_BUFFERED)return resolve();const previous=channel.onbufferedamountlow;channel.bufferedAmountLowThreshold=LOW_BUFFERED;channel.onbufferedamountlow=()=>{channel.onbufferedamountlow=previous;resolve();};});}
