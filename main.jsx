@@ -5,6 +5,7 @@ import RoleGate from "./RoleGate";
 import LoginTracker from "./LoginTracker";
 import "./styles.css";
 import "./ui-overrides.css";
+import "./scroll-fix.css";
 import "./batch-ui.css";
 import "./converter-tools.css";
 import "./free-tools-replacement.css";
