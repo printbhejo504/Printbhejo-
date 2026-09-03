@@ -58,16 +58,11 @@ export async function findSession(pin) { if (!supabase) throw new Error("Supabas
 export async function sendSignal(sessionId,senderId,type,payload){if(!supabase)throw new Error("Supabase is not configured.");const expires=new Date(Date.now()+10*60*1000).toISOString();const{error}=await supabase.from("webrtc_signals").insert({session_id:sessionId,sender_id:senderId,type,payload,expires_at:expires});if(error)throw error;}
 export function subscribeSignals(sessionId,callback,onError){if(!supabase)throw new Error("Supabase is not configured.");const channel=supabase.channel(`printbhejo-signals-${sessionId}-${Math.random().toString(36).slice(2)}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"webrtc_signals",filter:`session_id=eq.${sessionId}`},payload=>callback(payload.new)).subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")onError?.(new Error(`Supabase Realtime ${status.toLowerCase().replace("_"," ")}.`));});return()=>{supabase.removeChannel(channel);};}
 
-async function waitForBufferedAmountLow(channel){
-  while(channel.bufferedAmount>LOW_BUFFERED){
-    if(channel.readyState!=="open")throw new Error("P2P connection closed while sending.");
-    await new Promise(resolve=>setTimeout(resolve,20));
-  }
-}
+async function waitForBufferedAmountLow(channel){while(channel.bufferedAmount>LOW_BUFFERED){if(channel.readyState!=="open")throw new Error("P2P connection closed while sending.");await new Promise(resolve=>setTimeout(resolve,20));}}
 
-export async function sendFileOverDataChannel(channel,file,onProgress,batchId,waitForAck){
+export async function sendFileOverDataChannel(channel,file,onProgress,batchId,waitForAck,fileIdOverride){
   if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");
-  const fileId=batchId?`${batchId}:${crypto.randomUUID()}`:crypto.randomUUID();
+  const fileId=fileIdOverride||(batchId?`${batchId}:${crypto.randomUUID()}`:crypto.randomUUID());
   const totalChunks=Math.ceil(file.size/CHUNK_SIZE);
   channel.send(JSON.stringify({type:"file-start",fileId,batchId,fileName:file.name,fileType:file.type||"application/octet-stream",fileSize:file.size,totalChunks}));
   let offset=0,index=0;
@@ -130,14 +125,16 @@ export function createSenderPeer({sessionId,peerId,onStatus,onProgress}){
   const pendingAcks=new Map();
   const waitForAck=fileId=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pendingAcks.delete(fileId);reject(new Error("Receiver did not confirm the file. Please try sending again."));},30000);pendingAcks.set(fileId,{resolve,reject,timer});});
   channel.onmessage=event=>{if(typeof event.data!=="string")return;try{const msg=JSON.parse(event.data);if(msg.type==="file-ack"){const pending=pendingAcks.get(msg.fileId);if(pending){clearTimeout(pending.timer);pendingAcks.delete(msg.fileId);pending.resolve();}}}catch{}};
-  channel.onopen=()=>onStatus?.("connected"); channel.onclose=()=>{pendingAcks.forEach(p=>{clearTimeout(p.timer);p.reject(new Error("P2P connection closed."));});pendingAcks.clear();onStatus?.("disconnected");}; channel.onerror=()=>onStatus?.("error");
+  channel.onopen=()=>onStatus?.("connected");
+  channel.onclose=()=>{pendingAcks.forEach(p=>{clearTimeout(p.timer);p.reject(new Error("P2P connection closed."));});pendingAcks.clear();onStatus?.("disconnected");};
+  channel.onerror=()=>onStatus?.("error");
   pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",e.candidate.toJSON()).catch(()=>{});};
   return{
     pc,channel,
     createOffer:async()=>{const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal(sessionId,peerId,"offer",offer);},
     handleAnswer:async answer=>{await pc.setRemoteDescription(answer);remoteDescriptionSet=true;while(pendingIce.length)await pc.addIceCandidate(pendingIce.shift());},
     addIce:async candidate=>{if(!candidate)return;if(!remoteDescriptionSet)pendingIce.push(candidate);else await pc.addIceCandidate(candidate);},
-    sendFile:file=>{sendQueue=sendQueue.catch(()=>{}).then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId)activeBatchId=crypto.randomUUID();const batch=activeBatchId;const fileId=`${batch}:${crypto.randomUUID()}`;const ackPromise=waitForAck(fileId);await sendFileOverDataChannel(channel,file,onProgress,batch,()=>ackPromise);return batch;});return sendQueue;},
+    sendFile:file=>{sendQueue=sendQueue.catch(()=>{}).then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId)activeBatchId=crypto.randomUUID();const batch=activeBatchId;const fileId=`${batch}:${crypto.randomUUID()}`;const ackPromise=waitForAck(fileId);await sendFileOverDataChannel(channel,file,onProgress,batch,()=>ackPromise,fileId);return batch;});return sendQueue;},
     close:()=>pc.close()
   };
 }
