@@ -1,0 +1,4 @@
+.upload-area .selected-list + .dropzone { display: none; }
+.upload-area:has(.selected-list) .dropzone { display: none; }
+.upload-area .selected-list .primary { font-size: 0; }
+.upload-area .selected-list .primary::after { content: "Send File"; font-size: 15px; }
