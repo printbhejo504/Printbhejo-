@@ -65,25 +65,7 @@ async function waitForBufferedAmountLow(channel){
   }
 }
 
-function waitForFileAck(channel,fileId,timeout=30000){
-  return new Promise((resolve,reject)=>{
-    const previous=channel.onmessage;
-    const timer=setTimeout(()=>{channel.onmessage=previous||null;reject(new Error("Receiver did not confirm the file. Please try sending again."));},timeout);
-    channel.onmessage=event=>{
-      if(typeof event.data==="string"){
-        try{
-          const msg=JSON.parse(event.data);
-          if(msg.type==="file-ack"&&msg.fileId===fileId){
-            clearTimeout(timer);channel.onmessage=previous||null;resolve();return;
-          }
-        }catch{}
-      }
-      if(previous)previous.call(channel,event);
-    };
-  });
-}
-
-export async function sendFileOverDataChannel(channel,file,onProgress,batchId){
+export async function sendFileOverDataChannel(channel,file,onProgress,batchId,waitForAck){
   if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");
   const fileId=batchId?`${batchId}:${crypto.randomUUID()}`:crypto.randomUUID();
   const totalChunks=Math.ceil(file.size/CHUNK_SIZE);
@@ -98,7 +80,7 @@ export async function sendFileOverDataChannel(channel,file,onProgress,batchId){
     if(index%16===0)await new Promise(r=>setTimeout(r,0));
   }
   channel.send(JSON.stringify({type:"file-complete",fileId,batchId}));
-  await waitForFileAck(channel,fileId);
+  if(waitForAck)await waitForAck(fileId);
 }
 
 export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
@@ -145,14 +127,17 @@ export function createSenderPeer({sessionId,peerId,onStatus,onProgress}){
   const pc=new RTCPeerConnection({iceServers:ICE_SERVERS});
   const channel=pc.createDataChannel("files",{ordered:true}); channel.binaryType="arraybuffer";
   let remoteDescriptionSet=false;const pendingIce=[];let activeBatchId=null;let sendQueue=Promise.resolve();
-  channel.onopen=()=>onStatus?.("connected"); channel.onclose=()=>onStatus?.("disconnected"); channel.onerror=()=>onStatus?.("error");
+  const pendingAcks=new Map();
+  const waitForAck=fileId=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pendingAcks.delete(fileId);reject(new Error("Receiver did not confirm the file. Please try sending again."));},30000);pendingAcks.set(fileId,{resolve,reject,timer});});
+  channel.onmessage=event=>{if(typeof event.data!=="string")return;try{const msg=JSON.parse(event.data);if(msg.type==="file-ack"){const pending=pendingAcks.get(msg.fileId);if(pending){clearTimeout(pending.timer);pendingAcks.delete(msg.fileId);pending.resolve();}}}catch{}};
+  channel.onopen=()=>onStatus?.("connected"); channel.onclose=()=>{pendingAcks.forEach(p=>{clearTimeout(p.timer);p.reject(new Error("P2P connection closed."));});pendingAcks.clear();onStatus?.("disconnected");}; channel.onerror=()=>onStatus?.("error");
   pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",e.candidate.toJSON()).catch(()=>{});};
   return{
     pc,channel,
     createOffer:async()=>{const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal(sessionId,peerId,"offer",offer);},
     handleAnswer:async answer=>{await pc.setRemoteDescription(answer);remoteDescriptionSet=true;while(pendingIce.length)await pc.addIceCandidate(pendingIce.shift());},
     addIce:async candidate=>{if(!candidate)return;if(!remoteDescriptionSet)pendingIce.push(candidate);else await pc.addIceCandidate(candidate);},
-    sendFile:file=>{sendQueue=sendQueue.catch(()=>{}).then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId)activeBatchId=crypto.randomUUID();const batch=activeBatchId;await sendFileOverDataChannel(channel,file,onProgress,batch);return batch;});return sendQueue;},
+    sendFile:file=>{sendQueue=sendQueue.catch(()=>{}).then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId)activeBatchId=crypto.randomUUID();const batch=activeBatchId;const fileId=`${batch}:${crypto.randomUUID()}`;const ackPromise=waitForAck(fileId);await sendFileOverDataChannel(channel,file,onProgress,batch,()=>ackPromise);return batch;});return sendQueue;},
     close:()=>pc.close()
   };
 }
