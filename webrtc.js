@@ -58,6 +58,14 @@ export async function findSession(pin) { if (!supabase) throw new Error("Supabas
 export async function sendSignal(sessionId,senderId,type,payload){if(!supabase)throw new Error("Supabase is not configured.");const expires=new Date(Date.now()+10*60*1000).toISOString();const{error}=await supabase.from("webrtc_signals").insert({session_id:sessionId,sender_id:senderId,type,payload,expires_at:expires});if(error)throw error;}
 export function subscribeSignals(sessionId,callback,onError){if(!supabase)throw new Error("Supabase is not configured.");const channel=supabase.channel(`printbhejo-signals-${sessionId}-${Math.random().toString(36).slice(2)}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"webrtc_signals",filter:`session_id=eq.${sessionId}`},payload=>callback(payload.new)).subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")onError?.(new Error(`Supabase Realtime ${status.toLowerCase().replace("_"," ")}.`));});return()=>{supabase.removeChannel(channel);};}
 
+function assertWebRTCSupport(){if(typeof window==="undefined"||typeof window.RTCPeerConnection!=="function")throw new Error("This browser does not support WebRTC file transfer. Please use a newer browser.");if(!window.isSecureContext)throw new Error("Secure connection (HTTPS) is required for browser-to-browser transfer.");}
+function attachConnectionDiagnostics(pc,onStatus){
+  const report=()=>{const state=pc.connectionState||pc.iceConnectionState;if(state==="connected"||state==="completed")onStatus?.("connected");else if(state==="failed")onStatus?.("error",new Error("WebRTC network connection failed. Try another network or enable TURN on the server."));else if(state==="disconnected")onStatus?.("disconnected");};
+  pc.onconnectionstatechange=report;
+  pc.oniceconnectionstatechange=report;
+  pc.onicecandidateerror=()=>{};
+}
+
 async function waitForBufferedAmountLow(channel){while(channel.bufferedAmount>LOW_BUFFERED){if(channel.readyState!=="open")throw new Error("P2P connection closed while sending.");await new Promise(resolve=>setTimeout(resolve,20));}}
 
 export async function sendFileOverDataChannel(channel,file,onProgress,batchId,waitForAck,fileIdOverride){
@@ -79,46 +87,72 @@ export async function sendFileOverDataChannel(channel,file,onProgress,batchId,wa
 }
 
 export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
-  const pc=new RTCPeerConnection({iceServers:ICE_SERVERS});
-  let current=null,remoteDescriptionSet=false;
-  const pendingIce=[],messageQueue=[];let processingQueue=false;
-  const processMessageQueue=async()=>{
-    if(processingQueue)return; processingQueue=true;
-    try{
-      while(messageQueue.length){
-        const item=messageQueue.shift(); const data=item.data; const channel=item.channel;
-        if(typeof data==="string"){
-          const msg=JSON.parse(data);
-          if(msg.type==="file-start"){
-            if(current)throw new Error("Received a new file before the previous file was finalized.");
-            current={...msg,fileId:msg.fileId,batchId:msg.batchId||String(msg.fileId||"").split(":")[0],chunks:[],received:0,channel};
-            onStatus?.("receiving",0,msg.fileSize);
-          }else if(msg.type==="file-complete"&&current?.fileId===msg.fileId){
-            if(current.received!==current.fileSize)throw new Error(`Incomplete file received: ${current.fileName}`);
-            const finished=current; current=null;
-            const blob=new Blob(finished.chunks,{type:finished.fileType});
-            await onFile?.({...finished,blob});
-            if(channel.readyState==="open")channel.send(JSON.stringify({type:"file-ack",fileId:finished.fileId,batchId:finished.batchId}));
-            onStatus?.("file-complete",finished.received,finished.fileSize);
+  assertWebRTCSupport();
+  const peers=new Map();
+  const makeReceiver=(senderPeerId)=>{
+    if(peers.has(senderPeerId))return peers.get(senderPeerId);
+    const pc=new RTCPeerConnection({iceServers:ICE_SERVERS});
+    const state={pc,remoteDescriptionSet:false,pendingIce:[],channels:new Set()};
+    peers.set(senderPeerId,state);
+    const channelHandler=channel=>{
+      state.channels.add(channel); channel.binaryType="arraybuffer";
+      let current=null; const messageQueue=[]; let processingQueue=false;
+      const processMessageQueue=async()=>{
+        if(processingQueue)return; processingQueue=true;
+        try{
+          while(messageQueue.length){
+            const item=messageQueue.shift(); const data=item.data;
+            if(typeof data==="string"){
+              const msg=JSON.parse(data);
+              if(msg.type==="file-start"){
+                if(current)throw new Error("Received a new file before the previous file was finalized.");
+                current={...msg,fileId:msg.fileId,batchId:msg.batchId||String(msg.fileId||"").split(":")[0],chunks:[],received:0};
+                onStatus?.("receiving",0,msg.fileSize,senderPeerId);
+              }else if(msg.type==="file-complete"&&current?.fileId===msg.fileId){
+                if(current.received!==current.fileSize)throw new Error(`Incomplete file received: ${current.fileName}`);
+                const finished=current; current=null;
+                const blob=new Blob(finished.chunks,{type:finished.fileType});
+                await onFile?.({...finished,blob,senderPeerId});
+                if(channel.readyState==="open")channel.send(JSON.stringify({type:"file-ack",fileId:finished.fileId,batchId:finished.batchId}));
+                onStatus?.("file-complete",finished.received,finished.fileSize,senderPeerId);
+              }
+            }else if(current){current.chunks.push(data);current.received+=data.byteLength;onStatus?.("receiving",current.received,current.fileSize,senderPeerId);}
           }
-        }else if(current){current.chunks.push(data);current.received+=data.byteLength;onStatus?.("receiving",current.received,current.fileSize);}
-      }
-    }catch(error){current=null;onStatus?.("error",error);}
-    finally{processingQueue=false;if(messageQueue.length)processMessageQueue();}
+        }catch(error){current=null;onStatus?.("error",error,senderPeerId);}
+        finally{processingQueue=false;if(messageQueue.length)processMessageQueue();}
+      };
+      channel.onopen=()=>onStatus?.("connected",undefined,undefined,senderPeerId);
+      channel.onclose=()=>{state.channels.delete(channel);onStatus?.("disconnected",undefined,undefined,senderPeerId);};
+      channel.onerror=()=>onStatus?.("error",new Error("P2P data channel error."),senderPeerId);
+      channel.onmessage=event=>{messageQueue.push({data:event.data});processMessageQueue();};
+    };
+    pc.ondatachannel=e=>channelHandler(e.channel);
+    pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",{...e.candidate.toJSON(),toPeerId:senderPeerId,fromPeerId:peerId}).catch(()=>{});};
+    attachConnectionDiagnostics(pc,onStatus);
+    return state;
   };
-  const channelHandler=channel=>{
-    channel.binaryType="arraybuffer";
-    channel.onopen=()=>onStatus?.("connected");
-    channel.onclose=()=>onStatus?.("disconnected");
-    channel.onerror=()=>onStatus?.("error");
-    channel.onmessage=event=>{messageQueue.push({data:event.data,channel});processMessageQueue();};
+  return {
+    pc:null,
+    handleOffer:async offer=>{
+      const senderPeerId=offer?.fromPeerId||offer?.peerId;
+      if(!senderPeerId)throw new Error("Sender identity missing from offer.");
+      const state=makeReceiver(senderPeerId); await state.pc.setRemoteDescription({type:offer.type,sdp:offer.sdp}); state.remoteDescriptionSet=true;
+      while(state.pendingIce.length)await state.pc.addIceCandidate(state.pendingIce.shift());
+      const answer=await state.pc.createAnswer(); await state.pc.setLocalDescription(answer);
+      await sendSignal(sessionId,peerId,"answer",{type:answer.type,sdp:answer.sdp,toPeerId:senderPeerId,fromPeerId:peerId});
+    },
+    addIce:async candidate=>{
+      const senderPeerId=candidate?.fromPeerId;
+      if(!senderPeerId)return;
+      const state=makeReceiver(senderPeerId); const clean={candidate:candidate.candidate,sdpMid:candidate.sdpMid,sdpMLineIndex:candidate.sdpMLineIndex,usernameFragment:candidate.usernameFragment};
+      if(!state.remoteDescriptionSet)state.pendingIce.push(clean);else await state.pc.addIceCandidate(clean);
+    },
+    close:()=>{peers.forEach(({pc})=>pc.close());peers.clear();}
   };
-  pc.ondatachannel=e=>channelHandler(e.channel);
-  pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",e.candidate.toJSON()).catch(()=>{});};
-  return{pc,handleOffer:async offer=>{await pc.setRemoteDescription(offer);remoteDescriptionSet=true;while(pendingIce.length)await pc.addIceCandidate(pendingIce.shift());const answer=await pc.createAnswer();await pc.setLocalDescription(answer);await sendSignal(sessionId,peerId,"answer",answer);},addIce:async candidate=>{if(!candidate)return;if(!remoteDescriptionSet)pendingIce.push(candidate);else await pc.addIceCandidate(candidate);},close:()=>pc.close()};
 }
 
 export function createSenderPeer({sessionId,peerId,onStatus,onProgress}){
+  assertWebRTCSupport();
   const pc=new RTCPeerConnection({iceServers:ICE_SERVERS});
   const channel=pc.createDataChannel("files",{ordered:true}); channel.binaryType="arraybuffer";
   let remoteDescriptionSet=false;const pendingIce=[];let activeBatchId=null;let sendQueue=Promise.resolve();
@@ -127,13 +161,14 @@ export function createSenderPeer({sessionId,peerId,onStatus,onProgress}){
   channel.onmessage=event=>{if(typeof event.data!=="string")return;try{const msg=JSON.parse(event.data);if(msg.type==="file-ack"){const pending=pendingAcks.get(msg.fileId);if(pending){clearTimeout(pending.timer);pendingAcks.delete(msg.fileId);pending.resolve();}}}catch{}};
   channel.onopen=()=>onStatus?.("connected");
   channel.onclose=()=>{pendingAcks.forEach(p=>{clearTimeout(p.timer);p.reject(new Error("P2P connection closed."));});pendingAcks.clear();onStatus?.("disconnected");};
-  channel.onerror=()=>onStatus?.("error");
-  pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",e.candidate.toJSON()).catch(()=>{});};
+  channel.onerror=()=>onStatus?.("error",new Error("P2P data channel error."));
+  pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",{...e.candidate.toJSON(),fromPeerId:peerId,toPeerId:null}).catch(()=>{});};
+  attachConnectionDiagnostics(pc,onStatus);
   return{
     pc,channel,
-    createOffer:async()=>{const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal(sessionId,peerId,"offer",offer);},
-    handleAnswer:async answer=>{await pc.setRemoteDescription(answer);remoteDescriptionSet=true;while(pendingIce.length)await pc.addIceCandidate(pendingIce.shift());},
-    addIce:async candidate=>{if(!candidate)return;if(!remoteDescriptionSet)pendingIce.push(candidate);else await pc.addIceCandidate(candidate);},
+    createOffer:async()=>{const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal(sessionId,peerId,"offer",{type:offer.type,sdp:offer.sdp,fromPeerId:peerId});},
+    handleAnswer:async answer=>{if(answer?.toPeerId&&answer.toPeerId!==peerId)return;await pc.setRemoteDescription({type:answer.type,sdp:answer.sdp});remoteDescriptionSet=true;while(pendingIce.length)await pc.addIceCandidate(pendingIce.shift());},
+    addIce:async candidate=>{if(candidate?.toPeerId&&candidate.toPeerId!==peerId)return;const clean={candidate:candidate.candidate,sdpMid:candidate.sdpMid,sdpMLineIndex:candidate.sdpMLineIndex,usernameFragment:candidate.usernameFragment};if(!remoteDescriptionSet)pendingIce.push(clean);else await pc.addIceCandidate(clean);},
     sendFile:file=>{sendQueue=sendQueue.catch(()=>{}).then(async()=>{if(channel.readyState!=="open")throw new Error("P2P connection is not ready. Please reconnect.");if(!activeBatchId)activeBatchId=crypto.randomUUID();const batch=activeBatchId;const fileId=`${batch}:${crypto.randomUUID()}`;const ackPromise=waitForAck(fileId);await sendFileOverDataChannel(channel,file,onProgress,batch,()=>ackPromise,fileId);return batch;});return sendQueue;},
     close:()=>pc.close()
   };
