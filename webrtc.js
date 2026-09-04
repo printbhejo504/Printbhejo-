@@ -3,6 +3,8 @@ import { ICE_SERVERS, supabase } from "./config";
 const CHUNK_SIZE = 64 * 1024;
 const MAX_BUFFERED = 4 * 1024 * 1024;
 const LOW_BUFFERED = 1 * 1024 * 1024;
+const MAX_SENDERS_PER_RECEIVER = 8;
+const PEER_CLEANUP_DELAY = 15_000;
 const PERMANENT_SESSION_EXPIRY = "2099-12-31T23:59:59.000Z";
 
 export function makePeerId() { const bytes = crypto.getRandomValues(new Uint8Array(16)); return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join(""); }
@@ -86,16 +88,19 @@ export async function sendFileOverDataChannel(channel,file,onProgress,batchId,wa
   if(waitForAck)await waitForAck(fileId);
 }
 
-export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
+export function createReceiverPeer({sessionId,peerId,onFile,onStatus,onPeersChange}){
   assertWebRTCSupport();
   const peers=new Map();
+  const notifyPeers=()=>onPeersChange?.(Array.from(peers.entries()).map(([id,state])=>({peerId:id,connectionState:state.pc.connectionState||state.pc.iceConnectionState||"new",connected:state.connected,connectedAt:state.connectedAt}))); 
+  const scheduleCleanup=(senderPeerId,state)=>{if(state.cleanupTimer)clearTimeout(state.cleanupTimer);state.cleanupTimer=setTimeout(()=>{const current=peers.get(senderPeerId);if(current!==state)return;state.channels.forEach(ch=>{try{ch.close()}catch{}});try{state.pc.close()}catch{};peers.delete(senderPeerId);notifyPeers();},PEER_CLEANUP_DELAY);};
   const makeReceiver=(senderPeerId)=>{
     if(peers.has(senderPeerId))return peers.get(senderPeerId);
+    if(peers.size>=MAX_SENDERS_PER_RECEIVER)throw new Error(`Receiver is full. Maximum ${MAX_SENDERS_PER_RECEIVER} senders can be connected at once.`);
     const pc=new RTCPeerConnection({iceServers:ICE_SERVERS});
-    const state={pc,remoteDescriptionSet:false,pendingIce:[],channels:new Set()};
-    peers.set(senderPeerId,state);
+    const state={pc,remoteDescriptionSet:false,pendingIce:[],channels:new Set(),connected:false,connectedAt:null,cleanupTimer:null};
+    peers.set(senderPeerId,state); notifyPeers();
     const channelHandler=channel=>{
-      state.channels.add(channel); channel.binaryType="arraybuffer";
+      state.channels.add(channel); if(state.cleanupTimer)clearTimeout(state.cleanupTimer); channel.binaryType="arraybuffer";
       let current=null; const messageQueue=[]; let processingQueue=false;
       const processMessageQueue=async()=>{
         if(processingQueue)return; processingQueue=true;
@@ -121,22 +126,25 @@ export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
         }catch(error){current=null;onStatus?.("error",error,senderPeerId);}
         finally{processingQueue=false;if(messageQueue.length)processMessageQueue();}
       };
-      channel.onopen=()=>onStatus?.("connected",undefined,undefined,senderPeerId);
-      channel.onclose=()=>{state.channels.delete(channel);onStatus?.("disconnected",undefined,undefined,senderPeerId);};
+      channel.onopen=()=>{state.connected=true;state.connectedAt=state.connectedAt||Date.now();if(state.cleanupTimer)clearTimeout(state.cleanupTimer);notifyPeers();onStatus?.("connected",undefined,undefined,senderPeerId);};
+      channel.onclose=()=>{state.channels.delete(channel);if(state.channels.size===0){state.connected=false;notifyPeers();scheduleCleanup(senderPeerId,state);}onStatus?.("disconnected",undefined,undefined,senderPeerId);};
       channel.onerror=()=>onStatus?.("error",new Error("P2P data channel error."),senderPeerId);
       channel.onmessage=event=>{messageQueue.push({data:event.data});processMessageQueue();};
     };
     pc.ondatachannel=e=>channelHandler(e.channel);
     pc.onicecandidate=e=>{if(e.candidate)sendSignal(sessionId,peerId,"ice-candidate",{...e.candidate.toJSON(),toPeerId:senderPeerId,fromPeerId:peerId}).catch(()=>{});};
-    attachConnectionDiagnostics(pc,onStatus);
+    attachConnectionDiagnostics(pc,(stateName,error)=>{if(stateName==="connected"){state.connected=true;state.connectedAt=state.connectedAt||Date.now();if(state.cleanupTimer)clearTimeout(state.cleanupTimer);}if(stateName==="disconnected"||stateName==="error"){if(stateName==="disconnected")scheduleCleanup(senderPeerId,state);}notifyPeers();onStatus?.(stateName,error,undefined,senderPeerId);});
     return state;
   };
   return {
     pc:null,
+    getPeerCount:()=>Array.from(peers.values()).filter(p=>p.connected).length,
+    getPeers:()=>Array.from(peers.entries()).map(([id,state])=>({peerId:id,connected:state.connected,connectedAt:state.connectedAt,connectionState:state.pc.connectionState||state.pc.iceConnectionState||"new"})),
     handleOffer:async offer=>{
       const senderPeerId=offer?.fromPeerId||offer?.peerId;
       if(!senderPeerId)throw new Error("Sender identity missing from offer.");
-      const state=makeReceiver(senderPeerId); await state.pc.setRemoteDescription({type:offer.type,sdp:offer.sdp}); state.remoteDescriptionSet=true;
+      const state=makeReceiver(senderPeerId); if(state.cleanupTimer)clearTimeout(state.cleanupTimer);
+      await state.pc.setRemoteDescription({type:offer.type,sdp:offer.sdp}); state.remoteDescriptionSet=true;
       while(state.pendingIce.length)await state.pc.addIceCandidate(state.pendingIce.shift());
       const answer=await state.pc.createAnswer(); await state.pc.setLocalDescription(answer);
       await sendSignal(sessionId,peerId,"answer",{type:answer.type,sdp:answer.sdp,toPeerId:senderPeerId,fromPeerId:peerId});
@@ -147,7 +155,7 @@ export function createReceiverPeer({sessionId,peerId,onFile,onStatus}){
       const state=makeReceiver(senderPeerId); const clean={candidate:candidate.candidate,sdpMid:candidate.sdpMid,sdpMLineIndex:candidate.sdpMLineIndex,usernameFragment:candidate.usernameFragment};
       if(!state.remoteDescriptionSet)state.pendingIce.push(clean);else await state.pc.addIceCandidate(clean);
     },
-    close:()=>{peers.forEach(({pc})=>pc.close());peers.clear();}
+    close:()=>{peers.forEach(({pc,channels,cleanupTimer})=>{if(cleanupTimer)clearTimeout(cleanupTimer);channels.forEach(ch=>{try{ch.close()}catch{}});try{pc.close()}catch{}});peers.clear();notifyPeers();}
   };
 }
 
