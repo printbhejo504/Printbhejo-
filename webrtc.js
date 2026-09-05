@@ -69,7 +69,7 @@ function createIceBatcher(sessionId, senderId, toPeerId) {
     const batch = queue.splice(0, queue.length);
     if (timer) { clearTimeout(timer); timer = null; }
     flushing = flushing.then(async () => {
-      await sendSignal(sessionId, senderId, "ice-candidates", { candidates: batch, fromPeerId: senderId, toPeerId: toPeerId ?? null });
+      await sendSignal(sessionId, senderId, "ice-candidate", { candidates: batch, fromPeerId: senderId, toPeerId: toPeerId ?? null });
     }).catch(() => {});
     return flushing;
   };
@@ -161,8 +161,8 @@ export function createReceiverPeer({sessionId,peerId,onFile,onStatus,onPeersChan
     return state;
   };
   const addIce=async candidate=>{
-    if(candidate?.type==="ice-candidates"&&Array.isArray(candidate.candidates)){
-      for(const item of candidate.candidates)await addIce(item);
+    if(Array.isArray(candidate?.candidates)){
+      for(const item of candidate.candidates)await addIce({...item,fromPeerId:candidate.fromPeerId,toPeerId:candidate.toPeerId});
       return;
     }
     const senderPeerId=candidate?.fromPeerId;
@@ -202,7 +202,7 @@ export function createSenderPeer({sessionId,peerId,onStatus,onProgress}){
   channel.onerror=()=>onStatus?.("error",new Error("P2P data channel error."));
   pc.onicecandidate=e=>{if(e.candidate)iceBatcher.add({...e.candidate.toJSON(),fromPeerId:peerId,toPeerId:null});else iceBatcher.flush();};
   attachConnectionDiagnostics(pc,onStatus);
-  const addIce=async candidate=>{if(candidate?.type==="ice-candidates"&&Array.isArray(candidate.candidates)){for(const item of candidate.candidates)await addIce(item);return;}if(candidate?.toPeerId&&candidate.toPeerId!==peerId)return;const clean={candidate:candidate.candidate,sdpMid:candidate.sdpMid,sdpMLineIndex:candidate.sdpMLineIndex,usernameFragment:candidate.usernameFragment};if(!remoteDescriptionSet)pendingIce.push(clean);else await pc.addIceCandidate(clean);};
+  const addIce=async candidate=>{if(Array.isArray(candidate?.candidates)){for(const item of candidate.candidates)await addIce({...item,fromPeerId:candidate.fromPeerId,toPeerId:candidate.toPeerId});return;}if(candidate?.toPeerId&&candidate.toPeerId!==peerId)return;const clean={candidate:candidate.candidate,sdpMid:candidate.sdpMid,sdpMLineIndex:candidate.sdpMLineIndex,usernameFragment:candidate.usernameFragment};if(!remoteDescriptionSet)pendingIce.push(clean);else await pc.addIceCandidate(clean);};
   return{
     pc,channel,
     createOffer:async()=>{const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal(sessionId,peerId,"offer",{type:offer.type,sdp:offer.sdp,fromPeerId:peerId});},
