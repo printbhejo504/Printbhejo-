@@ -36,8 +36,8 @@ function findImportantLinksAnchor() {
 
 function enhance() {
   try {
-    // Keep announcements directly ABOVE the existing Important Links section.
-    // If that section is not available yet, fall back safely to below the header.
+    // Public announcement list is always visible to normal visitors/users.
+    // Keep it directly ABOVE the existing Important Links section.
     const importantLinks = findImportantLinksAnchor();
     const publicHost = document.querySelector('[data-pb-announcement-host="public"]');
     if (!publicHost) {
@@ -51,8 +51,9 @@ function enhance() {
       }
     }
 
-    // Admin announcements are also placed immediately above Important Links.
-    if (document.body.classList.contains("pb-authenticated") && importantLinks && !document.querySelector('[data-pb-announcement-host="admin"]')) {
+    // The link-generation/management form is ADMIN-ONLY.
+    // Regular authenticated users must never receive the admin component.
+    if (document.body.classList.contains("pb-admin-panel") && importantLinks && !document.querySelector('[data-pb-announcement-host="admin"]')) {
       const host = document.createElement("div");
       host.dataset.pbAnnouncementHost = "admin";
       importantLinks.insertAdjacentElement("beforebegin", host);
