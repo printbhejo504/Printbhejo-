@@ -1,5 +1,5 @@
 /* PrintBhejo Announcement Platform — fail-safe lazy loader.
-   No optional React/component import is executed during the main app boot.
+   The core PrintBhejo app is intentionally independent of this optional module.
 */
 
 const mounted = new WeakSet();
@@ -36,6 +36,7 @@ function findAdminAnchor() {
 
 function enhance() {
   try {
+    // Public announcements are mounted only after the existing app header exists.
     const publicHeader = document.querySelector("header, .header");
     if (publicHeader && !document.querySelector(".pb-announcements-public") && !document.querySelector('[data-pb-announcement-host="public"]')) {
       const host = document.createElement("div");
@@ -44,6 +45,7 @@ function enhance() {
       mount("public", host);
     }
 
+    // Admin announcements are mounted only when the existing authenticated UI is present.
     if (document.body.classList.contains("pb-authenticated")) {
       const anchor = findAdminAnchor();
       if (anchor && !document.querySelector(".pb-announcements-admin") && !document.querySelector('[data-pb-announcement-host="admin"]')) {
