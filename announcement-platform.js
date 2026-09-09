@@ -25,10 +25,10 @@ async function mount(mode, host) {
   }
 }
 
-function findAdminAnchor() {
+function findImportantLinksAnchor() {
   const nodes = [...document.querySelectorAll("section,div,article")];
   return nodes.find(el => {
-    if (el.dataset.pbAnnouncementHost || el.classList.contains("pb-announcements-admin")) return false;
+    if (el.dataset.pbAnnouncementHost || el.classList.contains("pb-announcements-public") || el.classList.contains("pb-announcements-admin")) return false;
     const text = (el.innerText || "").trim();
     return /^Important Links\b/i.test(text) && text.length < 1800;
   });
@@ -36,24 +36,27 @@ function findAdminAnchor() {
 
 function enhance() {
   try {
-    // Public announcements are mounted only after the existing app header exists.
-    const publicHeader = document.querySelector("header, .header");
-    if (publicHeader && !document.querySelector(".pb-announcements-public") && !document.querySelector('[data-pb-announcement-host="public"]')) {
-      const host = document.createElement("div");
-      host.dataset.pbAnnouncementHost = "public";
-      publicHeader.insertAdjacentElement("afterend", host);
-      mount("public", host);
+    // Keep announcements directly ABOVE the existing Important Links section.
+    // If that section is not available yet, fall back safely to below the header.
+    const importantLinks = findImportantLinksAnchor();
+    const publicHost = document.querySelector('[data-pb-announcement-host="public"]');
+    if (!publicHost) {
+      const fallbackHeader = document.querySelector("header, .header");
+      if (importantLinks || fallbackHeader) {
+        const host = document.createElement("div");
+        host.dataset.pbAnnouncementHost = "public";
+        if (importantLinks) importantLinks.insertAdjacentElement("beforebegin", host);
+        else fallbackHeader.insertAdjacentElement("afterend", host);
+        mount("public", host);
+      }
     }
 
-    // Admin announcements are mounted only when the existing authenticated UI is present.
-    if (document.body.classList.contains("pb-authenticated")) {
-      const anchor = findAdminAnchor();
-      if (anchor && !document.querySelector(".pb-announcements-admin") && !document.querySelector('[data-pb-announcement-host="admin"]')) {
-        const host = document.createElement("div");
-        host.dataset.pbAnnouncementHost = "admin";
-        anchor.insertAdjacentElement("beforebegin", host);
-        mount("admin", host);
-      }
+    // Admin announcements are also placed immediately above Important Links.
+    if (document.body.classList.contains("pb-authenticated") && importantLinks && !document.querySelector('[data-pb-announcement-host="admin"]')) {
+      const host = document.createElement("div");
+      host.dataset.pbAnnouncementHost = "admin";
+      importantLinks.insertAdjacentElement("beforebegin", host);
+      mount("admin", host);
     }
   } catch (error) {
     console.warn("PrintBhejo announcement enhancement skipped:", error);
