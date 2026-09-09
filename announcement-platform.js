@@ -1,28 +1,27 @@
-/* PrintBhejo Announcement Platform — fail-safe loader.
-   This file intentionally has no React/component imports at startup so a
-   problem in the optional announcement feature can never block the main app.
+/* PrintBhejo Announcement Platform — fail-safe lazy loader.
+   No optional React/component import is executed during the main app boot.
 */
 
 const mounted = new WeakSet();
-let loading = false;
+const loadingModes = new Set();
 
 async function mount(mode, host) {
-  if (!host || mounted.has(host) || loading) return;
+  if (!host || mounted.has(host) || loadingModes.has(mode)) return;
   mounted.add(host);
-  loading = true;
+  loadingModes.add(mode);
   try {
-    const [{ createRoot }, { default: AnnouncementPlatform }] = await Promise.all([
+    const [{ default: React }, { createRoot }, { default: AnnouncementPlatform }] = await Promise.all([
+      import("react"),
       import("react-dom/client"),
       import("./AnnouncementPlatform.jsx")
     ]);
     const root = createRoot(host);
     root.render(React.createElement(AnnouncementPlatform, { mode }));
   } catch (error) {
-    // Optional feature must fail silently; core PrintBhejo remains usable.
     console.warn("PrintBhejo announcements unavailable:", error);
     host.remove();
   } finally {
-    loading = false;
+    loadingModes.delete(mode);
   }
 }
 
@@ -36,28 +35,29 @@ function findAdminAnchor() {
 }
 
 function enhance() {
-  // Public module is optional and mounted only after the existing app DOM exists.
-  const publicHeader = document.querySelector("header, .header");
-  if (publicHeader && !document.querySelector(".pb-announcements-public") && !document.querySelector('[data-pb-announcement-host="public"]')) {
-    const host = document.createElement("div");
-    host.dataset.pbAnnouncementHost = "public";
-    publicHeader.insertAdjacentElement("afterend", host);
-    mount("public", host);
-  }
-
-  // Admin module is mounted only for an authenticated admin/staff screen.
-  if (document.body.classList.contains("pb-authenticated")) {
-    const anchor = findAdminAnchor();
-    if (anchor && !document.querySelector(".pb-announcements-admin") && !document.querySelector('[data-pb-announcement-host="admin"]')) {
+  try {
+    const publicHeader = document.querySelector("header, .header");
+    if (publicHeader && !document.querySelector(".pb-announcements-public") && !document.querySelector('[data-pb-announcement-host="public"]')) {
       const host = document.createElement("div");
-      host.dataset.pbAnnouncementHost = "admin";
-      anchor.insertAdjacentElement("beforebegin", host);
-      mount("admin", host);
+      host.dataset.pbAnnouncementHost = "public";
+      publicHeader.insertAdjacentElement("afterend", host);
+      mount("public", host);
     }
+
+    if (document.body.classList.contains("pb-authenticated")) {
+      const anchor = findAdminAnchor();
+      if (anchor && !document.querySelector(".pb-announcements-admin") && !document.querySelector('[data-pb-announcement-host="admin"]')) {
+        const host = document.createElement("div");
+        host.dataset.pbAnnouncementHost = "admin";
+        anchor.insertAdjacentElement("beforebegin", host);
+        mount("admin", host);
+      }
+    }
+  } catch (error) {
+    console.warn("PrintBhejo announcement enhancement skipped:", error);
   }
 }
 
-// Never throw during startup.
 try {
   enhance();
   const observer = new MutationObserver(enhance);
