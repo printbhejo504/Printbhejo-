@@ -8,7 +8,7 @@ function mount(mode, host) {
   if (!host || mounted.has(host)) return;
   mounted.add(host);
   const root = createRoot(host);
-  root.render(<AnnouncementPlatform mode={mode} />);
+  root.render(React.createElement(AnnouncementPlatform, { mode }));
 }
 
 function findAdminAnchor() {
@@ -28,7 +28,6 @@ function enhance() {
     publicHeader.insertAdjacentElement("afterend", host);
     mount("public", host);
   }
-
   if (document.body.classList.contains("pb-authenticated")) {
     const anchor = findAdminAnchor();
     if (anchor && !document.querySelector(".pb-announcements-admin")) {
