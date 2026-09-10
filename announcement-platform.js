@@ -1,6 +1,4 @@
-/* PrintBhejo Announcement Platform — fail-safe lazy loader.
-   The core PrintBhejo app is intentionally independent of this optional module.
-*/
+/* PrintBhejo Announcement Platform — fail-safe lazy loader. */
 
 const mounted = new WeakSet();
 const loadingModes = new Set();
@@ -20,45 +18,68 @@ async function mount(mode, host) {
   } catch (error) {
     console.warn("PrintBhejo announcements unavailable:", error);
     host.remove();
+    mounted.delete(host);
   } finally {
     loadingModes.delete(mode);
   }
 }
 
-function findImportantLinksAnchor() {
-  const nodes = [...document.querySelectorAll("section,div,article")];
-  return nodes.find(el => {
-    if (el.dataset.pbAnnouncementHost || el.classList.contains("pb-announcements-public") || el.classList.contains("pb-announcements-admin")) return false;
-    const text = (el.innerText || "").trim();
-    return /^Important Links\b/i.test(text) && text.length < 1800;
-  });
+function findHeading(text) {
+  return [...document.querySelectorAll("h1,h2,h3")].find(el =>
+    (el.textContent || "").trim().toLowerCase() === text.toLowerCase()
+  );
+}
+
+function findSectionByHeading(text) {
+  const heading = findHeading(text);
+  return heading?.closest("section") || null;
+}
+
+function createHost(mode) {
+  const host = document.createElement("div");
+  host.dataset.pbAnnouncementHost = mode;
+  return host;
+}
+
+function enhancePublic() {
+  if (document.querySelector('[data-pb-announcement-host="public"]')) return;
+
+  // Latest Updates goes between Received Files and Free Tools. This does not
+  // depend on Important Links or on the Important Links database having data.
+  const toolsSection = findSectionByHeading("Free Tools") || findSectionByHeading("PrintBhejo Tools");
+  const receivedSection = findSectionByHeading("📥 Received Files") || findHeading("Received Files")?.closest("section");
+  const host = createHost("public");
+
+  if (toolsSection) {
+    toolsSection.insertAdjacentElement("beforebegin", host);
+    mount("public", host);
+    return;
+  }
+  if (receivedSection) {
+    receivedSection.insertAdjacentElement("afterend", host);
+    mount("public", host);
+  }
+}
+
+function enhanceAdmin() {
+  if (document.querySelector('[data-pb-announcement-host="admin"]')) return;
+
+  // AdminPanel has a stable .admin-main root. Do not depend on an old body
+  // class because RoleGate/AdminPanel can render without that class.
+  const adminMain = document.querySelector(".admin-main");
+  if (!adminMain) return;
+
+  const host = createHost("admin");
+  const heading = adminMain.querySelector(".admin-heading");
+  if (heading) heading.insertAdjacentElement("afterend", host);
+  else adminMain.prepend(host);
+  mount("admin", host);
 }
 
 function enhance() {
   try {
-    // Public announcement list is always visible to normal visitors/users.
-    // Keep it directly ABOVE the existing Important Links section.
-    const importantLinks = findImportantLinksAnchor();
-    const publicHost = document.querySelector('[data-pb-announcement-host="public"]');
-    if (!publicHost) {
-      const fallbackHeader = document.querySelector("header, .header");
-      if (importantLinks || fallbackHeader) {
-        const host = document.createElement("div");
-        host.dataset.pbAnnouncementHost = "public";
-        if (importantLinks) importantLinks.insertAdjacentElement("beforebegin", host);
-        else fallbackHeader.insertAdjacentElement("afterend", host);
-        mount("public", host);
-      }
-    }
-
-    // The link-generation/management form is ADMIN-ONLY.
-    // Regular authenticated users must never receive the admin component.
-    if (document.body.classList.contains("pb-admin-panel") && importantLinks && !document.querySelector('[data-pb-announcement-host="admin"]')) {
-      const host = document.createElement("div");
-      host.dataset.pbAnnouncementHost = "admin";
-      importantLinks.insertAdjacentElement("beforebegin", host);
-      mount("admin", host);
-    }
+    enhanceAdmin();
+    if (!document.querySelector(".admin-shell")) enhancePublic();
   } catch (error) {
     console.warn("PrintBhejo announcement enhancement skipped:", error);
   }
@@ -66,10 +87,14 @@ function enhance() {
 
 try {
   enhance();
-  const observer = new MutationObserver(enhance);
+  const observer = new MutationObserver(() => {
+    clearTimeout(window.__pbAnnouncementEnhanceTimer);
+    window.__pbAnnouncementEnhanceTimer = setTimeout(enhance, 40);
+  });
   observer.observe(document.body, { childList: true, subtree: true });
-  setTimeout(enhance, 1000);
-  setTimeout(enhance, 2500);
+  setTimeout(enhance, 500);
+  setTimeout(enhance, 1500);
+  setTimeout(enhance, 3000);
 } catch (error) {
   console.warn("PrintBhejo announcement loader skipped:", error);
 }
