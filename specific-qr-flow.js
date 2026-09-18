@@ -30,8 +30,9 @@
       const connect = [...document.querySelectorAll("button")].find(b => /Enter PIN & Connect/i.test(b.textContent || ""));
       if (connect) connect.style.display = "none";
       // Reuse the existing sender/WebRTC path without changing it.
-      const custom = new CustomEvent("printbhejo:specific-qr-connect", { detail: { sessionId: row.session_id, qrCode: code } });
-      window.dispatchEvent(custom);
+      const detail = { sessionId: row.session_id, qrCode: code };
+      window.__printbhejoSpecificQrPending = detail;
+      window.dispatchEvent(new CustomEvent("printbhejo:specific-qr-connect", { detail }));
     }, 150);
   }
 
