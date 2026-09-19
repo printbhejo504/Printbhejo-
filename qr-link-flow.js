@@ -10,7 +10,7 @@
   }
 
   function upgradeReceiverQr() {
-    document.querySelectorAll("img.qr-code").forEach((img) => {
+    document.querySelectorAll("img.qr-code").forEach((img) => { if (img.dataset.printbhejoQrUnified === "1") return;
       const pin = getPinFromQrImage(img);
       if (!pin) return;
       const desired = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(qrUrl(pin))}`;
