@@ -19,7 +19,7 @@ async function loadPermanentPin() {
 function applyPin(pin) {
   if (!pin) return;
   document.querySelectorAll(".big-pin").forEach(el => { if (el.textContent !== pin) el.textContent = pin; });
-  document.querySelectorAll(".qr-code").forEach(img => {
+  document.querySelectorAll(".qr-code").forEach(img => { if (img.dataset.printbhejoQrUnified === "1") return;
     const src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(pin)}`;
     if (img.src !== src) img.src = src;
     img.alt = `QR code for receiver PIN ${pin}`;
