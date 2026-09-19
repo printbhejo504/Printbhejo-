@@ -10,6 +10,7 @@ export default function AuthGate({ children }) {
   const [session, setSession] = useState(undefined);
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -55,7 +56,7 @@ export default function AuthGate({ children }) {
   const name = getDisplayName(user);
 
   function openAuth(nextMode = "login") {
-    setMode(nextMode); setError(""); setMessage(""); setPassword(""); setShowPassword(false); setShowAuth(true);
+    setMode(nextMode); setError(""); setMessage(""); setPassword(""); setConfirmPassword(""); setShowPassword(false); setShowAuth(true);
   }
 
   async function login(e) {
@@ -97,7 +98,7 @@ export default function AuthGate({ children }) {
     if (!supabase) { setError("Supabase is not configured."); return; }
     if (!loginId.trim()) { setError("Apna Gmail/Email enter karein."); return; }
     setBusy(true);
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(loginId.trim(), { redirectTo: window.location.origin + window.location.pathname });
+    const { error: authError } = await supabase.auth.resetPasswordForEmail(loginId.trim(), { redirectTo: window.location.origin + "/reset-password" });
     setBusy(false);
     if (authError) { setError("Password reset email nahi bheja ja saka."); return; }
     setMessage("Password reset link aapke email par bhej diya gaya hai. Inbox/Spam check karein.");
@@ -106,12 +107,14 @@ export default function AuthGate({ children }) {
   async function resetPassword(e) {
     e.preventDefault(); setError(""); setMessage("");
     if (!supabase || password.length < 6) { setError("New password kam se kam 6 characters ka hona chahiye."); return; }
+    if (password !== confirmPassword) { setError("New password aur confirm password match nahi karte."); return; }
     setBusy(true);
     const { error: authError } = await supabase.auth.updateUser({ password });
     setBusy(false);
     if (authError) { setError(authError.message || "Password update nahi ho saka."); return; }
     setMessage("Password successfully change ho gaya. Ab aap PrintBhejo use kar sakte hain.");
-    setPassword(""); setMode("login"); setShowAuth(false);
+    setPassword(""); setConfirmPassword(""); setMode("login"); setShowAuth(false);
+    window.location.href = window.location.origin + "/";
   }
 
   async function logout() { await supabase?.auth.signOut(); setSession(null); window.location.reload(); }
@@ -158,7 +161,7 @@ export default function AuthGate({ children }) {
   ) : null;
 
   const resetModal = showAuth && mode === "reset" ? (
-    <div className="login-modal-backdrop"><div className="auth-card login-modal" role="dialog" aria-modal="true"><div className="auth-logo"><img src="/printbhejo-logo-new.png" alt="PrintBhejo" /></div><h1>Set New Password</h1><p>Apna naya password set karein.</p><form onSubmit={resetPassword}><label>New Password<div className="password-wrap"><input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" placeholder="New password" /><button type="button" onClick={() => setShowPassword(v => !v)}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label>{error && <div className="auth-error">{error}</div>}{message && <div className="auth-message">{message}</div>}<button className="auth-primary" disabled={busy}>{busy ? "Saving…" : "Save New Password"}</button></form></div></div>
+    <div className="login-modal-backdrop"><div className="auth-card login-modal" role="dialog" aria-modal="true"><div className="auth-logo"><img src="/printbhejo-logo-new.png" alt="PrintBhejo" /></div><h1>Set New Password</h1><p>Apna naya password set karein.</p><form onSubmit={resetPassword}><label>New Password<div className="password-wrap"><input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" placeholder="New password" /><button type="button" onClick={() => setShowPassword(v => !v)}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label><label>Confirm New Password<div className="password-wrap"><input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" placeholder="Confirm new password" /></div></label>{error && <div className="auth-error">{error}</div>}{message && <div className="auth-message">{message}</div>}<button className="auth-primary" disabled={busy}>{busy ? "Saving…" : "Save New Password"}</button></form></div></div>
   ) : null;
 
   return <>
