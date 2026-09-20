@@ -1,7 +1,7 @@
 import { ICE_SERVERS, supabase } from "./config";
 import { recordTransfer } from "./transfer-tracker";
 
-const CHUNK_SIZE = 60 * 1024;
+const CHUNK_SIZE = 256 * 1024;
 const MAX_BUFFERED = 8 * 1024 * 1024;
 const LOW_BUFFERED = 2 * 1024 * 1024;
 const CHUNK_ACK_WINDOW = 16;
