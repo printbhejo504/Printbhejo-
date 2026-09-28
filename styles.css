@@ -14,3 +14,18 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 .hero h1{display:inline-flex;align-items:center;justify-content:center;gap:14px;vertical-align:middle}
 .hero h1::after{content:"";display:inline-block;width:58px;height:58px;flex:0 0 58px;background:url("/printbhejo-logo-new.png") center/contain no-repeat;border-radius:12px}
 @media(max-width:520px){.hero h1{gap:10px}.hero h1::after{width:46px;height:46px;flex-basis:46px}}
+
+
+/* Modern file-send success dialog */
+.success-modal-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:rgba(15,23,42,.42);backdrop-filter:blur(8px);animation:successFade .18s ease}
+.success-modal{width:min(390px,100%);background:rgba(255,255,255,.98);border:1px solid rgba(255,255,255,.8);border-radius:24px;padding:28px 24px 22px;text-align:center;box-shadow:0 28px 80px rgba(15,23,42,.24);animation:successPop .22s cubic-bezier(.2,.8,.2,1)}
+.success-check{width:62px;height:62px;margin:0 auto 13px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#dcfce7,#bbf7d0);color:#15803d;font-size:32px;font-weight:950;box-shadow:0 10px 25px rgba(22,163,74,.16),inset 0 0 0 1px #a7f3d0}
+.success-kicker{font-size:10px;letter-spacing:1.5px;font-weight:900;color:#16a34a}
+.success-modal h3{margin:7px 0 7px;font-size:23px;letter-spacing:-.6px;color:#0f172a}
+.success-modal p{margin:0 auto 21px;max-width:290px;color:#71809a;font-size:13px;line-height:1.5}
+.success-actions{display:flex;gap:9px}
+.success-actions button{flex:1;min-height:44px}
+.success-actions .secondary{background:#f1f5f9;color:#475569}
+@keyframes successFade{from{opacity:0}to{opacity:1}}
+@keyframes successPop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:520px){.success-modal{padding:25px 18px 18px;border-radius:21px}.success-check{width:58px;height:58px}.success-modal h3{font-size:21px}}
