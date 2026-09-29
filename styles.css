@@ -51,3 +51,20 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 @keyframes connectingPulse{0%,100%{transform:scale(.88);opacity:.8}50%{transform:scale(1);opacity:1}}
 @keyframes connectingDot{0%,60%,100%{opacity:.2;transform:translateY(0)}30%{opacity:1;transform:translateY(-1px)}}
 @media(max-width:520px){.connecting-overlay{padding:16px}.connecting-card{width:min(350px,calc(100vw - 26px));padding:18px 20px;border-radius:20px;gap:15px}.connecting-orbit{width:52px;height:52px;flex-basis:52px}.connecting-copy strong{font-size:18px}}
+
+
+/* Sender file-transfer arc animation */
+.transfer-animation-overlay{position:fixed;inset:0;z-index:116;display:grid;place-items:center;padding:18px;pointer-events:none}
+.transfer-animation-card{width:min(370px,calc(100vw - 34px));height:205px;background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.95);border-radius:24px;box-shadow:0 25px 70px rgba(15,42,82,.18),0 3px 14px rgba(37,99,235,.08);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:transferCardIn .28s cubic-bezier(.2,.8,.2,1)}
+.transfer-stage{position:relative;width:290px;height:125px}
+.transfer-source,.transfer-destination{position:absolute;z-index:4;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#eef5ff,#dbeafe);color:#2563eb;box-shadow:0 8px 22px rgba(37,99,235,.13),inset 0 0 0 1px #cfe0fa}
+.transfer-source{left:4px;top:49px;width:54px;height:54px}.transfer-destination{right:4px;top:49px;width:58px;height:58px;background:linear-gradient(145deg,#e9fdf1,#d8f7e5);color:#16a34a;box-shadow:0 8px 22px rgba(22,163,74,.13),inset 0 0 0 1px #b7ebc8}
+.transfer-arc{position:absolute;left:31px;right:31px;top:8px;height:116px;border-top:2px dashed #c7dafa;border-radius:50% 50% 0 0;opacity:.9}
+.transfer-fly{position:absolute;left:25px;top:51px;width:34px;height:34px;z-index:5;animation:transferFly 2.2s cubic-bezier(.45,.05,.25,1) infinite}
+.transfer-fly-two{animation-delay:.72s}.transfer-fly-three{animation-delay:1.44s}
+.transfer-fly-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,#3b82f6,#2563eb);box-shadow:0 8px 18px rgba(37,99,235,.25);transform:rotate(-8deg)}
+.transfer-fly-two .transfer-fly-icon{background:linear-gradient(145deg,#a855f7,#7c3aed);transform:rotate(7deg)}.transfer-fly-three .transfer-fly-icon{background:linear-gradient(145deg,#22c55e,#16a34a);transform:rotate(-5deg)}
+.transfer-count{font-size:17px;font-weight:900;color:#16345f;letter-spacing:.2px;line-height:1;margin-top:2px}
+@keyframes transferFly{0%{opacity:0;transform:translate(0,0) scale(.7)}8%{opacity:1}25%{transform:translate(38px,-35px) scale(.94)}50%{transform:translate(112px,-57px) scale(1)}75%{transform:translate(184px,-35px) scale(.94)}92%{opacity:1}100%{opacity:0;transform:translate(230px,0) scale(.72)}}
+@keyframes transferCardIn{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:520px){.transfer-animation-card{width:min(350px,calc(100vw - 26px));height:190px;border-radius:21px}.transfer-stage{width:270px;height:115px}.transfer-source{left:2px;top:45px;width:50px;height:50px}.transfer-destination{right:2px;top:45px;width:54px;height:54px}.transfer-arc{left:28px;right:28px;height:108px}.transfer-fly{left:23px;top:47px}}
