@@ -173,7 +173,6 @@ export default function AuthGate({ children }) {
   ) : null;
 
   return <>
-    {headerTarget && createPortal(headerControls, headerTarget)}
     {authFloatingTarget && createPortal(headerControls, authFloatingTarget)}
     {children}
     {authModal}{resetModal}
