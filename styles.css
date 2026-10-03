@@ -84,3 +84,10 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 
 .monetag-ad-slot{width:100%;max-width:760px;min-height:0;margin:14px auto 6px;padding:0;text-align:center;overflow:visible;position:relative;z-index:1}
 .monetag-ad-slot>span{display:block;font-size:10px;line-height:1;color:#9ca3af;margin-bottom:4px;letter-spacing:.04em}
+
+
+/* Compact banner ad: small breathing room above and below, never overlaps content */
+.banner-ad-slot{width:100%;max-width:760px;min-height:0;margin:10px auto 10px;padding:0 8px;text-align:center;overflow:visible;position:relative;z-index:1;display:flex;justify-content:center;align-items:center;box-sizing:border-box}
+.banner-ad-slot:empty{min-height:0;margin-top:8px;margin-bottom:8px}
+.banner-ad-slot>script{max-width:100%}
+@media(max-width:520px){.banner-ad-slot{margin:8px auto 8px;padding:0 6px}.banner-ad-slot:empty{margin-top:6px;margin-bottom:6px}}
