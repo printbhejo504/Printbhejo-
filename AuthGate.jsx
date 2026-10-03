@@ -19,6 +19,7 @@ export default function AuthGate({ children }) {
   const [showAuth, setShowAuth] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [headerTarget, setHeaderTarget] = useState(null);
+  const [authFloatingTarget, setAuthFloatingTarget] = useState(null);
 
   useEffect(() => {
     if (!supabase) { setSession(null); return; }
@@ -35,8 +36,15 @@ export default function AuthGate({ children }) {
   useEffect(() => {
     const findHeader = () => setHeaderTarget(document.querySelector(".header"));
     findHeader();
+    let floating = document.getElementById("pb-auth-floating-controls");
+    if (!floating) {
+      floating = document.createElement("div");
+      floating.id = "pb-auth-floating-controls";
+      document.body.appendChild(floating);
+    }
+    setAuthFloatingTarget(floating);
     const t = setTimeout(findHeader, 0);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); if (floating?.parentNode) floating.remove(); setAuthFloatingTarget(null); };
   }, [session]);
 
   useEffect(() => {
@@ -166,6 +174,7 @@ export default function AuthGate({ children }) {
 
   return <>
     {headerTarget && createPortal(headerControls, headerTarget)}
+    {authFloatingTarget && createPortal(headerControls, authFloatingTarget)}
     {children}
     {authModal}{resetModal}
   </>;
