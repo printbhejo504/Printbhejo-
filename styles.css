@@ -70,6 +70,17 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 @media(max-width:520px){.transfer-animation-card{width:min(350px,calc(100vw - 26px));height:190px;border-radius:21px}.transfer-stage{width:270px;height:115px}.transfer-source{left:2px;top:45px;width:50px;height:50px}.transfer-destination{right:2px;top:45px;width:54px;height:54px}.transfer-arc{left:28px;right:28px;height:108px}.transfer-fly{left:23px;top:47px}}
 
 
-/* Monetag In-Page Push: isolated from transfer controls */
+/* Monetag In-Page Push: dedicated header-safe ad area */
+.monetag-ad-slot{width:100%;max-width:760px;min-height:0;margin:0 auto;padding:0 10px;text-align:center;overflow:visible;position:relative;z-index:1;display:flex;justify-content:center;align-items:center}
+.monetag-ad-slot>span{display:block;font-size:10px;line-height:1;color:#9ca3af;margin:0 0 4px;letter-spacing:.04em}
+.monetag-ad-slot[data-loaded="1"]{min-height:92px;padding:8px 10px}
+.header-ad-area{width:100%;min-height:0;background:transparent;position:relative;z-index:10;display:flex;justify-content:center;align-items:center;border-bottom:0;isolation:isolate}
+.header-ad-area .monetag-ad-slot{width:min(100%,780px)}
+.header-ad-area .monetag-ad-slot[data-loaded="1"]{min-height:92px}
+.header{position:sticky;top:0;z-index:1000;isolation:isolate}
+@media(max-width:520px){
+  .monetag-ad-slot[data-loaded="1"],.header-ad-area .monetag-ad-slot[data-loaded="1"]{min-height:86px;padding:7px 8px}
+}
+
 .monetag-ad-slot{width:100%;max-width:760px;min-height:0;margin:14px auto 6px;padding:0;text-align:center;overflow:visible;position:relative;z-index:1}
 .monetag-ad-slot>span{display:block;font-size:10px;line-height:1;color:#9ca3af;margin-bottom:4px;letter-spacing:.04em}
