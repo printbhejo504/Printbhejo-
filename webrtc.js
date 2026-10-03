@@ -1,10 +1,10 @@
 import { ICE_SERVERS, supabase } from "./config";
 import { recordTransfer } from "./transfer-tracker";
 
-const CHUNK_SIZE = 256 * 1024;
-const MAX_BUFFERED = 16 * 1024 * 1024;
-const LOW_BUFFERED = 4 * 1024 * 1024;
-const CHUNK_ACK_WINDOW = 64;
+const CHUNK_SIZE = 64 * 1024;
+const MAX_BUFFERED = 2 * 1024 * 1024;
+const LOW_BUFFERED = 512 * 1024;
+const CHUNK_ACK_WINDOW = 8;
 const MAX_SENDERS_PER_RECEIVER = 8;
 const PEER_CLEANUP_DELAY = 15_000;
 const ICE_BATCH_DELAY = 30;
