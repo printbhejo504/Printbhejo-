@@ -95,7 +95,15 @@ function AdminAnnouncements() {
     e.preventDefault();
     if (!supabase || !form.title.trim() || !form.url.trim()) return;
     setBusy(true); setMessage("");
-    const payload = { type: form.type, title: form.title.trim(), description: form.description.trim() || null, url: form.url.trim(), logo_url: form.logo_url.trim() || null, active: !!form.active };
+    let logoUrl = form.logo_url.trim() || null;
+    if (logoFile) {
+      const ext = (logoFile.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `announcements/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("admin-assets").upload(path, logoFile, { contentType: logoFile.type || "image/png", upsert: false });
+      if (up.error) { setMessage(up.error.message); setBusy(false); return; }
+      logoUrl = supabase.storage.from("admin-assets").getPublicUrl(path).data.publicUrl;
+    }
+    const payload = { type: form.type, title: form.title.trim(), description: form.description.trim() || null, url: form.url.trim(), logo_url: logoUrl, active: !!form.active };
     const result = editing ? await supabase.from("announcement_links").update(payload).eq("id", editing) : await supabase.from("announcement_links").insert(payload);
     if (result.error) setMessage(result.error.message); else { setMessage(editing ? "Update saved." : "Announcement added."); setForm({ type: "vacancy", title: "", description: "", url: "", logo_url: "", active: true }); setLogoFile(null); setEditing(null); await load(); }
     setBusy(false);
