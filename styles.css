@@ -95,6 +95,6 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 
 /* Reserved advertisement space between Transfer and Received Files.
    Keeps the layout stable before the ad loads and prevents the ad from covering content. */
-.banner-ad-slot{width:100%;max-width:760px;height:90px;min-height:90px;margin:10px auto 12px;padding:0 8px;text-align:center;overflow:hidden;position:relative;z-index:1;display:flex;justify-content:center;align-items:center;box-sizing:border-box}
-.banner-ad-slot iframe{display:block;width:100%;height:90px;border:0;margin:0;padding:0}
-@media(max-width:520px){.banner-ad-slot{height:90px;min-height:90px;margin:8px auto 10px;padding:0 5px}.banner-ad-slot iframe{height:90px}}
+.banner-ad-slot{width:320px;max-width:calc(100vw - 20px);height:100px;min-height:100px;margin:10px auto 12px;padding:0;text-align:center;overflow:hidden;position:relative;z-index:1;display:flex;justify-content:center;align-items:center;box-sizing:border-box}
+.banner-ad-slot iframe{display:block;width:320px;max-width:100%;height:100px;border:0;margin:0;padding:0}
+@media(max-width:520px){.banner-ad-slot{width:320px;max-width:calc(100vw - 20px);height:100px;min-height:100px;margin:8px auto 10px}.banner-ad-slot iframe{width:320px;max-width:100%;height:100px}}
