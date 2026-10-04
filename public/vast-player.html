@@ -34,6 +34,7 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
   let adsLoader=null,adsManager=null,adDisplayContainer=null;
 
   video.muted=true;
+  video.volume=0;
   video.setAttribute("muted","");
   video.setAttribute("autoplay","");
 
@@ -41,11 +42,12 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
   function showFallback(){start.style.display="block";start.disabled=false;start.textContent="Play Video Ad"}
   function cleanup(){try{if(adsManager)adsManager.destroy()}catch(e){}adsManager=null}
 
-  function requestAd(){
+  function requestAd(fromUserGesture){
     if(!adsLoader||!adDisplayContainer)return;
     msg.style.display="none";
     start.style.display="none";
     try{
+      if(fromUserGesture){video.muted=true;video.volume=0}
       adDisplayContainer.initialize();
       const request=new google.ima.AdsRequest();
       request.adTagUrl=VAST_URL;
@@ -55,7 +57,7 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
       request.nonLinearAdSlotHeight=Math.min(150,video.clientHeight||150);
       adsLoader.requestAds(request);
     }catch(e){
-      showMessage("Video ad could not start.");
+      showMessage("Tap Play Video Ad to start.");
       showFallback();
     }
   }
@@ -77,9 +79,10 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
 
       try{
         adsManager.init(video.clientWidth||640,video.clientHeight||360,google.ima.ViewMode.NORMAL);
+        adsManager.setVolume(0);
         adsManager.start();
       }catch(e){
-        showMessage("Video ad could not start.");cleanup();showFallback()
+        showMessage("Tap Play Video Ad to start.");cleanup();showFallback()
       }
     });
 
@@ -87,13 +90,14 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
       showMessage("No video ad available right now.");cleanup();showFallback()
     });
 
-    requestAd();
+    // Try muted autoplay. Mobile browsers may require a user gesture for IMA.
+    requestAd(false);
   }
 
   start.addEventListener("click",function(){
     start.disabled=true;
     start.textContent="Loading…";
-    requestAd();
+    requestAd(true);
   });
 
   window.addEventListener("resize",function(){
