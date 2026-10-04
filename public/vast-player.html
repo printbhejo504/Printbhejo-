@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>PrintBhejo Video Ad</title>
+<script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#0b1220;font-family:Arial,sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.player{position:relative;width:100%;max-width:640px;aspect-ratio:16/9;background:#000;overflow:hidden;border-radius:12px}
+video{position:absolute;inset:0;width:100%;height:100%;background:#000}
+#adContainer{position:absolute;inset:0;width:100%;height:100%;z-index:2}
+.start{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);border:0;border-radius:999px;padding:13px 22px;background:#fff;color:#111827;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 20px #0008}
+.label{position:absolute;z-index:5;top:8px;left:9px;padding:4px 7px;border-radius:5px;background:#0009;color:#fff;font-size:11px}
+.msg{position:absolute;z-index:6;inset:auto 10px 10px 10px;text-align:center;color:#fff;background:#000b;border-radius:6px;padding:7px;font-size:12px;display:none}
+</style>
+</head>
+<body>
+<div class="player">
+  <video id="contentElement" playsinline></video>
+  <div id="adContainer"></div>
+  <span class="label">Advertisement</span>
+  <button id="start" class="start">Play Video Ad</button>
+  <div id="msg" class="msg"></div>
+</div>
+<script>
+(function(){
+  const VAST_URL="https://nautical-hand.com/dZmDF.zadaGYNPvJZ/GQU-/kexmx9cumZsUWl/kuP_Tncf0/OZDIYD2/MWzuMqtkNLzYQ/4/NCjGYRzPNiwv";
+  const video=document.getElementById("contentElement");
+  const adContainer=document.getElementById("adContainer");
+  const start=document.getElementById("start");
+  const msg=document.getElementById("msg");
+  let adsLoader=null,adsManager=null,adDisplayContainer=null;
+
+  function showMessage(text){
+    msg.textContent=text;
+    msg.style.display="block";
+  }
+
+  function cleanup(){
+    try{if(adsManager)adsManager.destroy();}catch(e){}
+    adsManager=null;
+    start.style.display="none";
+  }
+
+  function setup(){
+    if(!window.google || !google.ima){
+      showMessage("Video player unavailable.");
+      return;
+    }
+
+    adDisplayContainer=new google.ima.AdDisplayContainer(adContainer,video);
+    adsLoader=new google.ima.AdsLoader(adDisplayContainer);
+
+    adsLoader.addEventListener(
+      google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
+      function(event){
+        const settings=new google.ima.AdsRenderingSettings();
+        settings.restoreCustomPlaybackStateOnAdBreakComplete=true;
+        adsManager=event.getAdsManager(video,settings);
+
+        adsManager.addEventListener(
+          google.ima.AdErrorEvent.Type.AD_ERROR,
+          function(){
+            showMessage("Video ad unavailable.");
+            cleanup();
+          }
+        );
+
+        adsManager.addEventListener(
+          google.ima.AdEvent.Type.COMPLETE,
+          function(){
+            cleanup();
+          }
+        );
+
+        try{
+          adsManager.init(video.clientWidth||640,video.clientHeight||360,google.ima.ViewMode.NORMAL);
+          adsManager.start();
+        }catch(e){
+          showMessage("Video ad could not start.");
+          cleanup();
+        }
+      }
+    );
+
+    adsLoader.addEventListener(
+      google.ima.AdErrorEvent.Type.AD_ERROR,
+      function(){
+        showMessage("No video ad available right now.");
+        cleanup();
+      }
+    );
+  }
+
+  start.addEventListener("click",function(){
+    start.disabled=true;
+    start.textContent="Loading…";
+    try{
+      adDisplayContainer.initialize();
+      const request=new google.ima.AdsRequest();
+      request.adTagUrl=VAST_URL;
+      request.linearAdSlotWidth=video.clientWidth||640;
+      request.linearAdSlotHeight=video.clientHeight||360;
+      request.nonLinearAdSlotWidth=video.clientWidth||640;
+      request.nonLinearAdSlotHeight=Math.min(150,video.clientHeight||150);
+      adsLoader.requestAds(request);
+    }catch(e){
+      showMessage("Video ad could not start.");
+      cleanup();
+    }
+  });
+
+  window.addEventListener("resize",function(){
+    if(adsManager){
+      try{adsManager.resize(video.clientWidth||640,video.clientHeight||360,google.ima.ViewMode.NORMAL);}catch(e){}
+    }
+  });
+
+  setup();
+})();
+</script>
+</body>
+</html>
