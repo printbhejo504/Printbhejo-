@@ -26,77 +26,44 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
 </div>
 <script>
 (function(){
-  const VAST_URL="https://nautical-hand.com/dZmDF.zadaGYNPvJZ/GQU-/kexmx9cumZsUWl/kuP_Tncf0/OZDIYD2/MWzuMqtkNLzYQ/4/NCjGYRzPNiwv";
+  const VAST_URL="https://nautical-hand.com/d.mlFtzcd_G/NyvfZKGlUJ/teYmo9puxZwUSlZk/P/T/ch0EOjDGY/2IMgzcMCtZNfzeQT4QNCjjYyzYNPyNZDsGa/WK1DpQddDS0/xM";
   const video=document.getElementById("contentElement");
   const adContainer=document.getElementById("adContainer");
   const start=document.getElementById("start");
   const msg=document.getElementById("msg");
   let adsLoader=null,adsManager=null,adDisplayContainer=null;
 
-  function showMessage(text){
-    msg.textContent=text;
-    msg.style.display="block";
-  }
-
-  function cleanup(){
-    try{if(adsManager)adsManager.destroy();}catch(e){}
-    adsManager=null;
-    start.style.display="none";
-  }
+  function showMessage(text){msg.textContent=text;msg.style.display="block"}
+  function cleanup(){try{if(adsManager)adsManager.destroy()}catch(e){}adsManager=null;start.style.display="none"}
 
   function setup(){
-    if(!window.google || !google.ima){
-      showMessage("Video player unavailable.");
-      return;
-    }
-
+    if(!window.google||!google.ima){showMessage("Video player unavailable.");return}
     adDisplayContainer=new google.ima.AdDisplayContainer(adContainer,video);
     adsLoader=new google.ima.AdsLoader(adDisplayContainer);
 
-    adsLoader.addEventListener(
-      google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
-      function(event){
-        const settings=new google.ima.AdsRenderingSettings();
-        settings.restoreCustomPlaybackStateOnAdBreakComplete=true;
-        adsManager=event.getAdsManager(video,settings);
+    adsLoader.addEventListener(google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,function(event){
+      const settings=new google.ima.AdsRenderingSettings();
+      settings.restoreCustomPlaybackStateOnAdBreakComplete=true;
+      adsManager=event.getAdsManager(video,settings);
 
-        adsManager.addEventListener(
-          google.ima.AdErrorEvent.Type.AD_ERROR,
-          function(){
-            showMessage("Video ad unavailable.");
-            cleanup();
-          }
-        );
+      adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,function(){
+        showMessage("Video ad unavailable.");cleanup()
+      });
+      adsManager.addEventListener(google.ima.AdEvent.Type.COMPLETE,function(){cleanup()});
 
-        adsManager.addEventListener(
-          google.ima.AdEvent.Type.COMPLETE,
-          function(){
-            cleanup();
-          }
-        );
+      try{
+        adsManager.init(video.clientWidth||640,video.clientHeight||360,google.ima.ViewMode.NORMAL);
+        adsManager.start()
+      }catch(e){showMessage("Video ad could not start.");cleanup()}
+    });
 
-        try{
-          adsManager.init(video.clientWidth||640,video.clientHeight||360,google.ima.ViewMode.NORMAL);
-          adsManager.start();
-        }catch(e){
-          showMessage("Video ad could not start.");
-          cleanup();
-        }
-      }
-    );
-
-    adsLoader.addEventListener(
-      google.ima.AdErrorEvent.Type.AD_ERROR,
-      function(){
-        showMessage("No video ad available right now.");
-        cleanup();
-      }
-    );
+    adsLoader.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,function(){
+      showMessage("No video ad available right now.");cleanup()
+    });
   }
 
   start.addEventListener("click",function(){
-    start.disabled=true;
-    start.textContent="Loading…";
+    start.disabled=true;start.textContent="Loading…";
     try{
       adDisplayContainer.initialize();
       const request=new google.ima.AdsRequest();
@@ -105,19 +72,13 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
       request.linearAdSlotHeight=video.clientHeight||360;
       request.nonLinearAdSlotWidth=video.clientWidth||640;
       request.nonLinearAdSlotHeight=Math.min(150,video.clientHeight||150);
-      adsLoader.requestAds(request);
-    }catch(e){
-      showMessage("Video ad could not start.");
-      cleanup();
-    }
+      adsLoader.requestAds(request)
+    }catch(e){showMessage("Video ad could not start.");cleanup()}
   });
 
   window.addEventListener("resize",function(){
-    if(adsManager){
-      try{adsManager.resize(video.clientWidth||640,video.clientHeight||360,google.ima.ViewMode.NORMAL);}catch(e){}
-    }
+    if(adsManager){try{adsManager.resize(video.clientWidth||640,video.clientHeight||360,google.ima.ViewMode.NORMAL)}catch(e){}}
   });
-
   setup();
 })();
 </script>
