@@ -39,6 +39,21 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
   video.setAttribute("autoplay","");
 
   function showMessage(text){msg.textContent=text;msg.style.display="block"}
+  function debugAdError(prefix,event){
+    let code="unknown",vast="n/a",message="unknown";
+    try{
+      const err=event&&event.getError?event.getError():null;
+      if(err){
+        code=err.getErrorCode?err.getErrorCode():"unknown";
+        message=err.getMessage?err.getMessage():"unknown";
+        vast=err.getVastErrorCode?err.getVastErrorCode():"n/a";
+      }
+    }catch(e){}
+    const detail=prefix+" | IMA "+code+" | VAST "+vast+" | "+message;
+    console.error("[PrintBhejo VAST DEBUG]",detail,{url:VAST_URL,event:event});
+    showMessage("Ad error: IMA "+code+" / VAST "+vast);
+    return detail;
+  }
   function showFallback(){start.style.display="block";start.disabled=false;start.textContent="Play Video Ad"}
   function cleanup(){try{if(adsManager)adsManager.destroy()}catch(e){}adsManager=null}
 
@@ -57,7 +72,8 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
       request.nonLinearAdSlotHeight=Math.min(150,video.clientHeight||150);
       adsLoader.requestAds(request);
     }catch(e){
-      showMessage("Tap Play Video Ad to start.");
+      console.error("[PrintBhejo VAST DEBUG] request exception",e,{url:VAST_URL});
+      showMessage("Ad request error: "+(e&&e.message?e.message:"unknown"));
       showFallback();
     }
   }
@@ -72,8 +88,8 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
       settings.restoreCustomPlaybackStateOnAdBreakComplete=true;
       adsManager=event.getAdsManager(video,settings);
 
-      adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,function(){
-        showMessage("Video ad unavailable.");cleanup();showFallback()
+      adsManager.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,function(event){
+        debugAdError("AdsManager error",event);cleanup();showFallback()
       });
       adsManager.addEventListener(google.ima.AdEvent.Type.COMPLETE,function(){cleanup()});
 
@@ -86,8 +102,8 @@ video{position:absolute;inset:0;width:100%;height:100%;background:#000}
       }
     });
 
-    adsLoader.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,function(){
-      showMessage("No video ad available right now.");cleanup();showFallback()
+    adsLoader.addEventListener(google.ima.AdErrorEvent.Type.AD_ERROR,function(event){
+      debugAdError("AdsLoader error",event);cleanup();showFallback()
     });
 
     // Try muted autoplay. Mobile browsers may require a user gesture for IMA.
