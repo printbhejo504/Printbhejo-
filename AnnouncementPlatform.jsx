@@ -74,7 +74,8 @@ function AdminAnnouncements() {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ type: "vacancy", title: "", description: "", url: "", logo_url: "", active: true });
   const [editing, setEditing] = useState(null);
-  const [busy, setBusy] = useState(false);\n  const [logoFile, setLogoFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
   const [message, setMessage] = useState("");
 
   const load = async () => {
