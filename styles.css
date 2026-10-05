@@ -71,6 +71,7 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 
 
 /* Reserved ad spaces — ready for the next banner integration. */
+.banner-ad-wrap{width:320px;max-width:calc(100vw - 20px);margin:16px auto 18px;text-align:center}.ad-safety-label{font-size:10px;line-height:12px;color:#94a3b8;margin:0 0 3px;text-align:center}.banner-ad-wrap .banner-ad-slot{margin:0}
 .banner-ad-slot{width:320px;max-width:calc(100vw - 20px);height:250px;min-height:250px;margin:16px auto 18px;padding:0 4px;text-align:center;overflow:hidden;position:relative;z-index:1;display:flex;justify-content:center;align-items:center;box-sizing:border-box}
 .banner-ad-slot>span,.success-ad-slot>span{font-size:10px;line-height:1;color:#9ca3af;letter-spacing:.04em}
 .success-ad-slot{width:320px;max-width:calc(100vw - 28px);height:250px;min-height:250px;margin:12px auto;overflow:hidden;display:flex;justify-content:center;align-items:center;box-sizing:border-box}
