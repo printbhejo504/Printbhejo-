@@ -76,3 +76,5 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 .banner-ad-slot>span,.success-ad-slot>span{font-size:10px;line-height:1;color:#9ca3af;letter-spacing:.04em}
 .success-ad-slot{width:320px;max-width:calc(100vw - 28px);height:250px;min-height:250px;margin:12px auto;overflow:hidden;display:flex;justify-content:center;align-items:center;box-sizing:border-box}
 @media(max-width:520px){.banner-ad-slot{width:320px;max-width:calc(100vw - 20px);height:250px;min-height:250px;margin:12px auto 14px}.success-ad-slot{width:320px;max-width:calc(100vw - 24px);height:250px;margin:10px auto}}
+
+.video-slider-ad{width:100%;min-height:0;margin:8px auto 12px;text-align:center;position:relative;z-index:1}.video-slider-ad .ad-safety-label{font-size:10px;line-height:12px;color:#94a3b8;margin:0 0 3px;text-align:center}
