@@ -5,4 +5,7 @@ import "./converter-tools.css";
 import "./tools-page.css";
 
 const root = document.getElementById("tools-root");
-if (root) createRoot(root).render(<ConverterTools inline />);
+if (root) {
+  const initialTool = root.dataset.tool || "png-jpg";
+  createRoot(root).render(<ConverterTools inline initialTool={initialTool} />);
+}
