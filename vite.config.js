@@ -8,6 +8,8 @@ export default defineConfig({
       input: {
         main: "index.html",
         tools: "tools.html",
+        "word-to-pdf": "word-to-pdf.html",
+        "pdf-to-word": "pdf-to-word.html",
       },
     },
   },
