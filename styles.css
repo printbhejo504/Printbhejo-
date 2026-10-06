@@ -70,6 +70,12 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 @media(max-width:520px){.transfer-animation-card{width:min(350px,calc(100vw - 26px));height:190px;border-radius:21px}.transfer-stage{width:270px;height:115px}.transfer-source{left:2px;top:45px;width:50px;height:50px}.transfer-destination{right:2px;top:45px;width:54px;height:54px}.transfer-arc{left:28px;right:28px;height:108px}.transfer-fly{left:23px;top:47px}}
 
 
+/* Admolo 320x180 banner in the former top banner position. */
+.admolo-banner-wrap{width:320px;max-width:calc(100vw - 20px);height:180px;margin:14px auto 18px;text-align:center;overflow:hidden;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
+.admolo-banner-wrap .ad-safety-label{font-size:10px;line-height:12px;color:#94a3b8;margin:0 0 3px;text-align:center}
+.admolo-banner-wrap .admoloBanner{width:320px;height:180px;max-width:100%;overflow:hidden;display:flex;align-items:center;justify-content:center}
+@media(max-width:520px){.admolo-banner-wrap{width:320px;max-width:calc(100vw - 20px);height:180px;margin:10px auto 14px}.admolo-banner-wrap .admoloBanner{width:320px;height:180px}}
+
 /* Reserved ad spaces — ready for the next banner integration. */
 .banner-ad-wrap{width:320px;max-width:calc(100vw - 20px);margin:16px auto 18px;text-align:center}.ad-safety-label{font-size:10px;line-height:12px;color:#94a3b8;margin:0 0 3px;text-align:center}.banner-ad-wrap .banner-ad-slot{margin:0}
 .banner-ad-slot{width:320px;max-width:calc(100vw - 20px);height:250px;min-height:250px;margin:16px auto 18px;padding:0 4px;text-align:center;overflow:hidden;position:relative;z-index:1;display:flex;justify-content:center;align-items:center;box-sizing:border-box}
