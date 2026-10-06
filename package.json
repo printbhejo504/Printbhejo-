@@ -19,7 +19,7 @@
     "react-dom": "^18.3.1",
     "xlsx": "^0.18.5",
     "qrcode": "^1.5.4",
-    "mammoth": "^1.10.0",
+    "mammoth": "^1.13.0",
     "docx": "^9.5.1"
   },
   "devDependencies": {
