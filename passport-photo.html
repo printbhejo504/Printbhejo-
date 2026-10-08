@@ -74,167 +74,64 @@
 </main>
 <script>
 (() => {
-  function init() {
-    const input = document.getElementById("photoInput");
-    const upload = document.getElementById("uploadPanel");
-    const editor = document.getElementById("editorPanel");
-    const preview = document.getElementById("previewCanvas");
-    const sheet = document.getElementById("sheetCanvas");
-    const zoom = document.getElementById("zoomRange");
-    const countLabel = document.getElementById("countLabel");
-    if (!input || !upload || !editor || !preview || !sheet || !zoom) return;
+  const input = document.getElementById("photoInput");
+  const upload = document.getElementById("uploadPanel");
+  const editor = document.getElementById("editorPanel");
+  const preview = document.getElementById("previewCanvas");
+  const sheet = document.getElementById("sheetCanvas");
+  const zoom = document.getElementById("zoomRange");
+  const countLabel = document.getElementById("countLabel");
+  if (!input || !upload || !editor || !preview || !sheet || !zoom) return;
 
-    let image = null;
-    let count = 4;
-    let imageData = "";
+  let image = null, count = 4;
+  const PW=413, PH=531, A4W=2480, A4H=3508;
 
-    const PHOTO_W = 413, PHOTO_H = 531;
-    const SHEET_W = 2480, SHEET_H = 3508;
-
-    function drawCrop(canvas, w, h) {
-      if (!image) return;
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, w, h);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-
-      const target = w / h;
-      const source = image.width / image.height;
-      const z = Math.max(1, Number(zoom.value) || 1);
-      let sw, sh, sx, sy;
-
-      if (source > target) {
-        sh = image.height / z;
-        sw = sh * target;
-        sx = (image.width - sw) / 2;
-        sy = (image.height - sh) / 2;
-      } else {
-        sw = image.width / z;
-        sh = sw / target;
-        sx = (image.width - sw) / 2;
-        sy = (image.height - sh) / 2;
-      }
-
-      sx = Math.max(0, sx);
-      sy = Math.max(0, sy);
-      sw = Math.min(sw, image.width - sx);
-      sh = Math.min(sh, image.height - sy);
-      ctx.drawImage(image, sx, sy, sw, sh, 0, 0, w, h);
-    }
-
-    function render() {
-      if (!image) return;
-      drawCrop(preview, PHOTO_W, PHOTO_H);
-
-      sheet.width = SHEET_W;
-      sheet.height = SHEET_H;
-      const ctx = sheet.getContext("2d");
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, SHEET_W, SHEET_H);
-
-      const gap = 70, margin = 150;
-      const cols = count === 4 ? 2 : count === 6 ? 3 : 4;
-      const rows = count / cols;
-      const maxW = (SHEET_W - 2 * margin - (cols - 1) * gap) / cols;
-      const maxH = (SHEET_H - 2 * margin - (rows - 1) * gap) / rows;
-      const scale = Math.min(maxW / PHOTO_W, maxH / PHOTO_H);
-      const pw = Math.round(PHOTO_W * scale);
-      const ph = Math.round(PHOTO_H * scale);
-      const totalW = cols * pw + (cols - 1) * gap;
-      const totalH = rows * ph + (rows - 1) * gap;
-      const startX = Math.round((SHEET_W - totalW) / 2);
-      const startY = Math.round((SHEET_H - totalH) / 2);
-
-      for (let i = 0; i < count; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        ctx.drawImage(preview, startX + col * (pw + gap), startY + row * (ph + gap), pw, ph);
-      }
-      if (countLabel) countLabel.textContent = count + " photos";
-    }
-
-    function loadFile(file) {
-      if (!file || !file.type.startsWith("image/")) {
-        alert("Please select a JPG, PNG or WebP photo.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        imageData = String(reader.result || "");
-        const img = new Image();
-        img.onload = () => {
-          image = img;
-          upload.hidden = true;
-          editor.hidden = false;
-          zoom.value = "1";
-          render();
-        };
-        img.onerror = () => {
-          image = null;
-          alert("Photo could not be loaded. Please choose another JPG/PNG/WebP image.");
-        };
-        img.src = imageData;
-      };
-      reader.onerror = () => alert("Could not read this photo. Please try again.");
-      reader.readAsDataURL(file);
-    }
-
-    input.addEventListener("change", () => loadFile(input.files && input.files[0]));
-
-    document.querySelectorAll(".count-button").forEach(button => {
-      button.addEventListener("click", () => {
-        document.querySelectorAll(".count-button").forEach(b => b.classList.remove("active"));
-        button.classList.add("active");
-        count = Number(button.dataset.count) || 4;
-        render();
-      });
-    });
-
-    zoom.addEventListener("input", render);
-
-    document.getElementById("changePhoto")?.addEventListener("click", () => input.click());
-
-    document.getElementById("resetBtn")?.addEventListener("click", () => {
-      image = null;
-      imageData = "";
-      editor.hidden = true;
-      upload.hidden = false;
-      input.value = "";
-    });
-
-    document.getElementById("downloadBtn")?.addEventListener("click", () => {
-      if (!image) return;
-      const a = document.createElement("a");
-      a.download = "printbhejo-passport-photos-" + count + ".jpg";
-      a.href = sheet.toDataURL("image/jpeg", 0.94);
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    });
-
-    document.getElementById("printBtn")?.addEventListener("click", () => {
-      if (!image) return;
-      const url = sheet.toDataURL("image/jpeg", 0.94);
-      const w = window.open("", "_blank");
-      if (!w) {
-        alert("Please allow pop-ups to print the photo sheet.");
-        return;
-      }
-      w.document.write('<!doctype html><html><head><title>PrintBhejo Passport Photos</title><style>@page{size:A4;margin:0}html,body{margin:0;width:210mm;height:297mm}img{width:210mm;height:297mm;display:block}</style></head><body><img src="' + url + '"></body></html>');
-      w.document.close();
-      w.onload = () => { w.focus(); w.print(); };
-    });
+  function draw(canvas,w,h){
+    if(!image) return;
+    canvas.width=w; canvas.height=h;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+    const target=w/h, source=image.width/image.height, z=Math.max(1,Number(zoom.value)||1);
+    let sw,sh,sx,sy;
+    if(source>target){ sh=image.height/z; sw=sh*target; sx=(image.width-sw)/2; sy=(image.height-sh)/2; }
+    else { sw=image.width/z; sh=sw/target; sx=(image.width-sw)/2; sy=(image.height-sh)/2; }
+    ctx.drawImage(image,Math.max(0,sx),Math.max(0,sy),Math.min(sw,image.width),Math.min(sh,image.height),0,0,w,h);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
-  } else {
-    init();
+  function render(){
+    if(!image) return;
+    draw(preview,PW,PH);
+    sheet.width=A4W; sheet.height=A4H;
+    const ctx=sheet.getContext("2d");
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,A4W,A4H);
+    const mm=300/25.4, fw=Math.round(35*mm), fh=Math.round(45*mm);
+    const gap=Math.round(5*mm), margin=Math.round(10*mm);
+    const cols=count===4?2:count===6?3:4, rows=Math.ceil(count/cols);
+    const totalW=cols*fw+(cols-1)*gap, totalH=rows*fh+(rows-1)*gap;
+    const x0=Math.round((A4W-totalW)/2), y0=Math.round((A4H-totalH)/2);
+    for(let i=0;i<count;i++){
+      const x=x0+(i%cols)*(fw+gap), y=y0+Math.floor(i/cols)*(fh+gap);
+      ctx.strokeStyle="#cbd5e1"; ctx.lineWidth=2; ctx.strokeRect(x,y,fw,fh);
+      ctx.drawImage(preview,x,y,fw,fh);
+      ctx.strokeStyle="#94a3b8"; ctx.lineWidth=1; ctx.strokeRect(x,y,fw,fh);
+    }
+    if(countLabel) countLabel.textContent=count+" photos";
   }
+
+  function load(file){
+    if(!file || !/^image\/(jpeg|png|webp)$/.test(file.type)){ alert("Please select a JPG, PNG or WebP photo."); return; }
+    const reader=new FileReader();
+    reader.onload=()=>{ const img=new Image(); img.onload=()=>{ image=img; upload.hidden=true; editor.hidden=false; zoom.value="1"; render(); }; img.onerror=()=>alert("Photo could not be loaded."); img.src=reader.result; };
+    reader.onerror=()=>alert("Could not read the photo.");
+    reader.readAsDataURL(file);
+  }
+  input.addEventListener("change",()=>load(input.files?.[0]));
+  document.querySelectorAll(".count-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".count-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");count=Number(b.dataset.count)||4;render();}));
+  zoom.addEventListener("input",render);
+  document.getElementById("changePhoto")?.addEventListener("click",()=>input.click());
+  document.getElementById("resetBtn")?.addEventListener("click",()=>{image=null;input.value="";editor.hidden=true;upload.hidden=false;});
+  document.getElementById("downloadBtn")?.addEventListener("click",()=>{if(!image)return;const a=document.createElement("a");a.download="printbhejo-passport-photos-"+count+".jpg";a.href=sheet.toDataURL("image/jpeg",.94);a.click();});
+  document.getElementById("printBtn")?.addEventListener("click",()=>{if(!image)return;const w=window.open("","_blank");if(!w){alert("Please allow pop-ups to print.");return;}w.document.write('<html><head><title>PrintBhejo Passport Photos</title><style>@page{size:A4;margin:0}html,body{margin:0}img{width:210mm;height:297mm;display:block}</style></head><body><img src="'+sheet.toDataURL("image/jpeg",.94)+'"></body></html>');w.document.close();w.onload=()=>{w.focus();w.print();};});
 })();
 </script>
 </body>
