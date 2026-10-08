@@ -252,23 +252,59 @@
     if(countLabel) countLabel.textContent=count+" photos";
   }
 
+  async function loadImportedPhoto(){
+    try{
+      const db=await new Promise((resolve,reject)=>{
+        const req=indexedDB.open("printbhejo-passport-import",1);
+        req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("images"))req.result.createObjectStore("images");};
+        req.onerror=()=>reject(req.error);
+        req.onsuccess=()=>resolve(req.result);
+      });
+      const record=await new Promise((resolve,reject)=>{
+        const tx=db.transaction("images","readonly"),req=tx.objectStore("images").get("latest");
+        req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+      });
+      db.close();
+      if(!record?.blob)return false;
+      const url=URL.createObjectURL(record.blob);
+      const img=new Image();
+      await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url;});
+      image=img; maskCanvas=null; segmentationToken++; segmentationBusy=false;
+      upload.hidden=true; editor.hidden=false; zoom.value="1";
+      whiteBackground=false;
+      const toggle=document.getElementById("whiteBgToggle");
+      if(toggle)toggle.checked=false;
+      setBackgroundStatus("✓ Background removed in Editor • white background ready");
+      render();
+      URL.revokeObjectURL(url);
+      return true;
+    }catch(err){
+      console.error("PrintBhejo passport import:",err);
+      return false;
+    }
+  }
+
   function load(file){
     if(!file || !/^image\/(jpeg|png|webp)$/.test(file.type)){ alert("Please select a JPG, PNG or WebP photo."); return; }
     const reader=new FileReader();
-    reader.onload=()=>{ const img=new Image(); img.onload=()=>{ 
+    reader.onload=()=>{ const img=new Image(); img.onload=()=>{
       image=img; maskCanvas=null; segmentationToken++; segmentationBusy=false;
-      upload.hidden=true; editor.hidden=false; zoom.value="1"; 
+      upload.hidden=true; editor.hidden=false; zoom.value="1";
+      whiteBackground=false;
       const toggle=document.getElementById("whiteBgToggle");
-      if(toggle){toggle.checked=true;}
-      whiteBackground=true;
-      setBackgroundStatus("Removing background…");
+      if(toggle)toggle.checked=false;
+      setBackgroundStatus("Photo loaded • use Editor → Remove Background for clean white background");
       render();
-      prepareCutout();
     }; img.onerror=()=>alert("Photo could not be loaded."); img.src=reader.result; };
     reader.onerror=()=>alert("Could not read the photo.");
     reader.readAsDataURL(file);
   }
   input.addEventListener("change",()=>load(input.files?.[0]));
+  if(new URLSearchParams(window.location.search).get("import")==="1"){
+    loadImportedPhoto().then(ok=>{
+      if(ok)history.replaceState({},document.title,"/passport-photo.html");
+    });
+  }
   document.querySelectorAll(".filter-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".filter-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter||"original";render();}));
   document.querySelectorAll(".count-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".count-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");count=Number(b.dataset.count)||4;render();}));
   zoom.addEventListener("input",render);
