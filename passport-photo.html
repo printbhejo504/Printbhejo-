@@ -45,7 +45,7 @@
 <div class="preview-title">Photo preview</div>
 <div class="photo-preview-frame"><canvas id="previewCanvas"></canvas></div>
 <div class="zoom-row"><span>Zoom</span><input id="zoomRange" type="range" min="1" max="2.5" step="0.01" value="1"></div>
-<div class="background-block"><label class="toggle-control"><input id="whiteBgToggle" type="checkbox"><span>Auto white background</span></label><small>Light/near-white background areas are automatically cleaned to white.</small></div>
+<div class="background-block"><label class="toggle-control"><input id="whiteBgToggle" type="checkbox"><span>Remove background → White</span></label><small>Best for clear photos with a distinct person against the background.</small></div>
 <div class="filter-block"><span class="control-label">Enhance photo</span>
 <div class="filter-row">
 <button class="filter-button active" data-filter="original" type="button">Original</button>
@@ -118,11 +118,26 @@
       let br=0,bg=0,bb=0;
       corners.forEach(([px,py])=>{const i=(py*w+px)*4;br+=d[i];bg+=d[i+1];bb+=d[i+2];});
       br/=4;bg/=4;bb/=4;
-      const threshold=58;
-      for(let i=0;i<d.length;i+=4){
-        const r=d[i],g=d[i+1],b=d[i+2],dist=Math.sqrt((r-br)**2+(g-bg)**2+(b-bb)**2);
-        const nearWhite=(r>210&&g>210&&b>210);
-        if(nearWhite || dist<threshold){d[i]=255;d[i+1]=255;d[i+2]=255;}
+      const threshold=52;
+      // Estimate background from the four corners and remove pixels similar
+      // to that background. A soft edge keeps hair/shoulder boundaries smoother.
+      for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+          const i=(y*w+x)*4, r=d[i],g=d[i+1],b=d[i+2];
+          const dist=Math.sqrt((r-br)**2+(g-bg)**2+(b-bb)**2);
+          const edge=Math.min(x,y,w-1-x,h-1-y);
+          const edgeBoost=Math.min(1,edge/28);
+          const similarity=Math.max(0,1-dist/(threshold*1.65));
+          const whiteLike=(r>205&&g>205&&b>205&&Math.max(r,g,b)-Math.min(r,g,b)<28);
+          const amount=Math.max(whiteLike?1:0, similarity*edgeBoost);
+          if(amount>0.72){
+            d[i]=255;d[i+1]=255;d[i+2]=255;
+          }else if(amount>0.32){
+            d[i]=Math.round(r+(255-r)*amount);
+            d[i+1]=Math.round(g+(255-g)*amount);
+            d[i+2]=Math.round(b+(255-b)*amount);
+          }
+        }
       }
       ctx.putImageData(data,0,0);
     }
