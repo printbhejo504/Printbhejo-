@@ -182,16 +182,10 @@
           maskCanvas=document.createElement("canvas");
           maskCanvas.width=mw; maskCanvas.height=mh;
           const mx=maskCanvas.getContext("2d");
+          // Keep MediaPipe's native segmentation mask intact. Canvas
+          // compositing understands the mask's alpha/soft edges directly.
+          mx.clearRect(0,0,mw,mh);
           mx.drawImage(results.segmentationMask,0,0,mw,mh);
-          const data=mx.getImageData(0,0,mw,mh);
-          const d=data.data;
-          // Convert MediaPipe's grayscale confidence mask into real alpha.
-          for(let i=0;i<d.length;i+=4){
-            const v=d[i];
-            const a=Math.max(0,Math.min(255,(v-35)*1.35));
-            d[i]=255; d[i+1]=255; d[i+2]=255; d[i+3]=a;
-          }
-          mx.putImageData(data,0,0);
           maskCanvas.__ready=true;
           segmentationBusy=false;
           if(token===segmentationToken){
@@ -239,10 +233,11 @@
       image=img; maskCanvas=null; segmentationToken++; segmentationBusy=false;
       upload.hidden=true; editor.hidden=false; zoom.value="1"; 
       const toggle=document.getElementById("whiteBgToggle");
-      if(toggle){toggle.checked=false;}
-      whiteBackground=false;
-      setBackgroundStatus("Original background");
+      if(toggle){toggle.checked=true;}
+      whiteBackground=true;
+      setBackgroundStatus("Removing background…");
       render();
+      prepareCutout();
     }; img.onerror=()=>alert("Photo could not be loaded."); img.src=reader.result; };
     reader.onerror=()=>alert("Could not read the photo.");
     reader.readAsDataURL(file);
