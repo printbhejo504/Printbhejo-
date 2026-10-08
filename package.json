@@ -21,7 +21,8 @@
     "qrcode": "^1.5.4",
     "mammoth": "^1.13.0",
     "docx": "^9.5.1",
-    "@imgly/background-removal": "^1.7.0"
+    "@imgly/background-removal": "^1.7.0",
+    "onnxruntime-web": "^1.21.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
