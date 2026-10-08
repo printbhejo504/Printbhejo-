@@ -45,7 +45,7 @@
 <div class="preview-title">Photo preview</div>
 <div class="photo-preview-frame"><canvas id="previewCanvas"></canvas></div>
 <div class="zoom-row"><span>Zoom</span><input id="zoomRange" type="range" min="1" max="2.5" step="0.01" value="1"></div>
-<div class="background-block"><label class="toggle-control"><input id="whiteBgToggle" type="checkbox"><span>Remove background → White</span></label><small>Best for clear photos with a distinct person against the background.</small></div>
+<div class="background-block"><label class="toggle-control"><input id="whiteBgToggle" type="checkbox"><span>Remove background → White</span></label><small id="backgroundStatus">AI person cutout • white background</small></div>
 <div class="filter-block"><span class="control-label">Enhance photo</span>
 <div class="filter-row">
 <button class="filter-button active" data-filter="original" type="button">Original</button>
@@ -97,6 +97,7 @@
   if (!input || !upload || !editor || !preview || !sheet || !zoom) return;
 
   let image = null, count = 4, activeFilter = "original", whiteBackground = false;
+  let maskCanvas = null, segmentation = null, segmentationBusy = false, segmentationToken = 0;
   const PW=413, PH=531, A4W=2480, A4H=3508;
 
   function draw(canvas,w,h){
@@ -112,34 +113,102 @@
     ctx.filter=filters[activeFilter]||"none";
     ctx.drawImage(image,Math.max(0,sx),Math.max(0,sy),Math.min(sw,image.width),Math.min(sh,image.height),0,0,w,h);
     ctx.filter="none";
-    if(whiteBackground){
-      const data=ctx.getImageData(0,0,w,h), d=data.data;
-      const corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]];
-      let br=0,bg=0,bb=0;
-      corners.forEach(([px,py])=>{const i=(py*w+px)*4;br+=d[i];bg+=d[i+1];bb+=d[i+2];});
-      br/=4;bg/=4;bb/=4;
-      const threshold=52;
-      // Estimate background from the four corners and remove pixels similar
-      // to that background. A soft edge keeps hair/shoulder boundaries smoother.
-      for(let y=0;y<h;y++){
-        for(let x=0;x<w;x++){
-          const i=(y*w+x)*4, r=d[i],g=d[i+1],b=d[i+2];
-          const dist=Math.sqrt((r-br)**2+(g-bg)**2+(b-bb)**2);
-          const edge=Math.min(x,y,w-1-x,h-1-y);
-          const edgeBoost=Math.min(1,edge/28);
-          const similarity=Math.max(0,1-dist/(threshold*1.65));
-          const whiteLike=(r>205&&g>205&&b>205&&Math.max(r,g,b)-Math.min(r,g,b)<28);
-          const amount=Math.max(whiteLike?1:0, similarity*edgeBoost);
-          if(amount>0.72){
-            d[i]=255;d[i+1]=255;d[i+2]=255;
-          }else if(amount>0.32){
-            d[i]=Math.round(r+(255-r)*amount);
-            d[i+1]=Math.round(g+(255-g)*amount);
-            d[i+2]=Math.round(b+(255-b)*amount);
+    if(whiteBackground && maskCanvas){
+      // Real person segmentation: keep the detected foreground and place it
+      // over a clean white canvas. Do not whiten pixels by color similarity.
+      const fg=document.createElement("canvas");
+      fg.width=w; fg.height=h;
+      const fctx=fg.getContext("2d");
+      fctx.filter=filters[activeFilter]||"none";
+      fctx.drawImage(image,Math.max(0,sx),Math.max(0,sy),Math.min(sw,image.width),Math.min(sh,image.height),0,0,w,h);
+      fctx.filter="none";
+
+      const mctx=document.createElement("canvas").getContext("2d");
+      const mask=document.createElement("canvas");
+      mask.width=w; mask.height=h;
+      const mx=mask.getContext("2d");
+      const scaleX=maskCanvas.width/image.width, scaleY=maskCanvas.height/image.height;
+      mx.imageSmoothingEnabled=true;
+      mx.drawImage(maskCanvas,
+        Math.max(0,sx)*scaleX, Math.max(0,sy)*scaleY,
+        Math.min(sw,image.width)*scaleX, Math.min(sh,image.height)*scaleY,
+        0,0,w,h
+      );
+
+      fctx.globalCompositeOperation="destination-in";
+      fctx.drawImage(mask,0,0);
+      fctx.globalCompositeOperation="source-over";
+      ctx.drawImage(fg,0,0);
+    }
+  }
+
+  function setBackgroundStatus(message){
+    const el=document.getElementById("backgroundStatus");
+    if(el) el.textContent=message;
+  }
+
+  function loadSegmentationLibrary(){
+    if(window.SelfieSegmentation) return Promise.resolve();
+    if(window.__pbSegmentationPromise) return window.__pbSegmentationPromise;
+    window.__pbSegmentationPromise=new Promise((resolve,reject)=>{
+      const s=document.createElement("script");
+      s.src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js";
+      s.async=true;
+      s.onload=()=>resolve();
+      s.onerror=()=>reject(new Error("segmentation library failed to load"));
+      document.head.appendChild(s);
+    });
+    return window.__pbSegmentationPromise;
+  }
+
+  async function prepareCutout(){
+    if(!image || segmentationBusy) return;
+    const token=++segmentationToken;
+    segmentationBusy=true;
+    setBackgroundStatus("Removing background…");
+    try{
+      await loadSegmentationLibrary();
+      if(!segmentation){
+        segmentation=new SelfieSegmentation({
+          locateFile:file=>"https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/"+file
+        });
+        segmentation.setOptions({modelSelection:0});
+        segmentation.onResults(results=>{
+          if(token!==segmentationToken || !image) return;
+          const maxSide=1200;
+          const scale=Math.min(1,maxSide/Math.max(image.width,image.height));
+          const mw=Math.max(1,Math.round(image.width*scale));
+          const mh=Math.max(1,Math.round(image.height*scale));
+          maskCanvas=document.createElement("canvas");
+          maskCanvas.width=mw; maskCanvas.height=mh;
+          const mx=maskCanvas.getContext("2d");
+          mx.drawImage(results.segmentationMask,0,0,mw,mh);
+          const data=mx.getImageData(0,0,mw,mh);
+          const d=data.data;
+          // Convert MediaPipe's grayscale confidence mask into real alpha.
+          for(let i=0;i<d.length;i+=4){
+            const v=d[i];
+            const a=Math.max(0,Math.min(255,(v-35)*1.35));
+            d[i]=255; d[i+1]=255; d[i+2]=255; d[i+3]=a;
           }
-        }
+          mx.putImageData(data,0,0);
+          maskCanvas.__ready=true;
+          segmentationBusy=false;
+          if(token===segmentationToken){
+            setBackgroundStatus("✓ Person cutout ready • white background");
+            render();
+          }
+        });
       }
-      ctx.putImageData(data,0,0);
+      await segmentation.send({image:image});
+    }catch(err){
+      segmentationBusy=false;
+      maskCanvas=null;
+      whiteBackground=false;
+      const toggle=document.getElementById("whiteBgToggle");
+      if(toggle) toggle.checked=false;
+      setBackgroundStatus("Cutout unavailable — original photo kept");
+      render();
     }
   }
 
@@ -166,7 +235,15 @@
   function load(file){
     if(!file || !/^image\/(jpeg|png|webp)$/.test(file.type)){ alert("Please select a JPG, PNG or WebP photo."); return; }
     const reader=new FileReader();
-    reader.onload=()=>{ const img=new Image(); img.onload=()=>{ image=img; upload.hidden=true; editor.hidden=false; zoom.value="1"; render(); }; img.onerror=()=>alert("Photo could not be loaded."); img.src=reader.result; };
+    reader.onload=()=>{ const img=new Image(); img.onload=()=>{ 
+      image=img; maskCanvas=null; segmentationToken++; segmentationBusy=false;
+      upload.hidden=true; editor.hidden=false; zoom.value="1"; 
+      const toggle=document.getElementById("whiteBgToggle");
+      if(toggle){toggle.checked=false;}
+      whiteBackground=false;
+      setBackgroundStatus("Original background");
+      render();
+    }; img.onerror=()=>alert("Photo could not be loaded."); img.src=reader.result; };
     reader.onerror=()=>alert("Could not read the photo.");
     reader.readAsDataURL(file);
   }
@@ -174,7 +251,16 @@
   document.querySelectorAll(".filter-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".filter-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter||"original";render();}));
   document.querySelectorAll(".count-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".count-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");count=Number(b.dataset.count)||4;render();}));
   zoom.addEventListener("input",render);
-  document.getElementById("whiteBgToggle")?.addEventListener("change",e=>{whiteBackground=e.target.checked;render();});
+  document.getElementById("whiteBgToggle")?.addEventListener("change",e=>{
+    whiteBackground=e.target.checked;
+    if(whiteBackground){
+      if(maskCanvas?.__ready) render();
+      else prepareCutout();
+    }else{
+      setBackgroundStatus("Original background");
+      render();
+    }
+  });
   document.getElementById("copyPhotoBtn")?.addEventListener("click",async()=>{
     if(!image)return;
     try{
@@ -189,7 +275,7 @@
     }
   });
   document.getElementById("changePhoto")?.addEventListener("click",()=>input.click());
-  document.getElementById("resetBtn")?.addEventListener("click",()=>{image=null;input.value="";activeFilter="original";whiteBackground=false;if(document.getElementById("whiteBgToggle"))document.getElementById("whiteBgToggle").checked=false;document.querySelectorAll(".filter-button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="original"));editor.hidden=true;upload.hidden=false;});
+  document.getElementById("resetBtn")?.addEventListener("click",()=>{segmentationToken++;segmentationBusy=false;maskCanvas=null;image=null;input.value="";activeFilter="original";whiteBackground=false;if(document.getElementById("whiteBgToggle"))document.getElementById("whiteBgToggle").checked=false;setBackgroundStatus("AI person cutout • white background");document.querySelectorAll(".filter-button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="original"));editor.hidden=true;upload.hidden=false;});
   document.getElementById("downloadBtn")?.addEventListener("click",()=>{if(!image)return;const a=document.createElement("a");a.download="printbhejo-passport-photos-"+count+".jpg";a.href=sheet.toDataURL("image/jpeg",.94);a.click();});
   document.getElementById("printBtn")?.addEventListener("click",()=>{if(!image)return;const w=window.open("","_blank");if(!w){alert("Please allow pop-ups to print.");return;}w.document.write('<html><head><title>PrintBhejo Passport Photos</title><style>@page{size:A4;margin:0}html,body{margin:0}img{width:210mm;height:297mm;display:block}</style></head><body><img src="'+sheet.toDataURL("image/jpeg",.94)+'"></body></html>');w.document.close();w.onload=()=>{w.focus();w.print();};});
 })();
