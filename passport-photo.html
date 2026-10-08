@@ -45,6 +45,7 @@
 <div class="preview-title">Photo preview</div>
 <div class="photo-preview-frame"><canvas id="previewCanvas"></canvas></div>
 <div class="zoom-row"><span>Zoom</span><input id="zoomRange" type="range" min="1" max="2.5" step="0.01" value="1"></div>
+<div class="background-block"><label class="toggle-control"><input id="whiteBgToggle" type="checkbox"><span>Auto white background</span></label><small>Light/near-white background areas are automatically cleaned to white.</small></div>
 <div class="filter-block"><span class="control-label">Enhance photo</span>
 <div class="filter-row">
 <button class="filter-button active" data-filter="original" type="button">Original</button>
@@ -69,7 +70,7 @@
 <div class="info-box"><strong>Standard size</strong><br>35 × 45 mm • A4 print sheet</div>
 <div class="action-row">
 <button id="downloadBtn" class="primary-button" type="button">Download A4 JPG</button>
-<button id="printBtn" class="secondary-button" type="button">Print Sheet</button>
+<button id="printBtn" class="secondary-button" type="button">Print Sheet</button><button id="copyPhotoBtn" class="secondary-button" type="button">Copy Photo Frame</button>
 </div>
 <button id="resetBtn" class="text-button" type="button">Start over</button>
 </div>
@@ -95,7 +96,7 @@
   const countLabel = document.getElementById("countLabel");
   if (!input || !upload || !editor || !preview || !sheet || !zoom) return;
 
-  let image = null, count = 4, activeFilter = "original";
+  let image = null, count = 4, activeFilter = "original", whiteBackground = false;
   const PW=413, PH=531, A4W=2480, A4H=3508;
 
   function draw(canvas,w,h){
@@ -111,6 +112,20 @@
     ctx.filter=filters[activeFilter]||"none";
     ctx.drawImage(image,Math.max(0,sx),Math.max(0,sy),Math.min(sw,image.width),Math.min(sh,image.height),0,0,w,h);
     ctx.filter="none";
+    if(whiteBackground){
+      const data=ctx.getImageData(0,0,w,h), d=data.data;
+      const corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]];
+      let br=0,bg=0,bb=0;
+      corners.forEach(([px,py])=>{const i=(py*w+px)*4;br+=d[i];bg+=d[i+1];bb+=d[i+2];});
+      br/=4;bg/=4;bb/=4;
+      const threshold=58;
+      for(let i=0;i<d.length;i+=4){
+        const r=d[i],g=d[i+1],b=d[i+2],dist=Math.sqrt((r-br)**2+(g-bg)**2+(b-bb)**2);
+        const nearWhite=(r>210&&g>210&&b>210);
+        if(nearWhite || dist<threshold){d[i]=255;d[i+1]=255;d[i+2]=255;}
+      }
+      ctx.putImageData(data,0,0);
+    }
   }
 
   function render(){
@@ -144,8 +159,22 @@
   document.querySelectorAll(".filter-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".filter-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter||"original";render();}));
   document.querySelectorAll(".count-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".count-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");count=Number(b.dataset.count)||4;render();}));
   zoom.addEventListener("input",render);
+  document.getElementById("whiteBgToggle")?.addEventListener("change",e=>{whiteBackground=e.target.checked;render();});
+  document.getElementById("copyPhotoBtn")?.addEventListener("click",async()=>{
+    if(!image)return;
+    try{
+      const blob=await new Promise(resolve=>preview.toBlob(resolve,"image/png"));
+      if(!blob)throw new Error("no image");
+      await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+      const btn=document.getElementById("copyPhotoBtn"), old=btn.textContent;
+      btn.textContent="✓ Copied!";
+      setTimeout(()=>btn.textContent=old,1400);
+    }catch(e){
+      alert("Copy is not available in this browser. Please use Download A4 JPG.");
+    }
+  });
   document.getElementById("changePhoto")?.addEventListener("click",()=>input.click());
-  document.getElementById("resetBtn")?.addEventListener("click",()=>{image=null;input.value="";activeFilter="original";document.querySelectorAll(".filter-button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="original"));editor.hidden=true;upload.hidden=false;});
+  document.getElementById("resetBtn")?.addEventListener("click",()=>{image=null;input.value="";activeFilter="original";whiteBackground=false;if(document.getElementById("whiteBgToggle"))document.getElementById("whiteBgToggle").checked=false;document.querySelectorAll(".filter-button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="original"));editor.hidden=true;upload.hidden=false;});
   document.getElementById("downloadBtn")?.addEventListener("click",()=>{if(!image)return;const a=document.createElement("a");a.download="printbhejo-passport-photos-"+count+".jpg";a.href=sheet.toDataURL("image/jpeg",.94);a.click();});
   document.getElementById("printBtn")?.addEventListener("click",()=>{if(!image)return;const w=window.open("","_blank");if(!w){alert("Please allow pop-ups to print.");return;}w.document.write('<html><head><title>PrintBhejo Passport Photos</title><style>@page{size:A4;margin:0}html,body{margin:0}img{width:210mm;height:297mm;display:block}</style></head><body><img src="'+sheet.toDataURL("image/jpeg",.94)+'"></body></html>');w.document.close();w.onload=()=>{w.focus();w.print();};});
 })();
