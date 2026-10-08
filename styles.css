@@ -94,3 +94,10 @@ main{max-width:1180px;margin:auto;padding:42px 20px 76px}.hero{text-align:center
 .passport-tool-banner-home-copy small{margin-top:3px;font-size:13px;line-height:1.35;color:#475569}
 .passport-tool-banner-home-action{font-size:13px;font-weight:700;color:#2563eb;white-space:nowrap}
 @media (max-width:640px){.passport-tool-banner-home{gap:10px;padding:12px}.passport-tool-banner-home-icon{flex-basis:38px;width:38px;height:38px;font-size:20px}.passport-tool-banner-home-copy strong{font-size:15px}.passport-tool-banner-home-copy small{font-size:12px}.passport-tool-banner-home-action{font-size:12px}}
+
+/* Passport Photo Maker banner inside the visible converter tools panel */
+.passport-tool-banner-inline{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;margin:0 0 16px;padding:11px 13px;border:1px solid #bfdbfe;border-radius:14px;background:linear-gradient(135deg,#eff6ff,#fff);color:#0f172a;text-decoration:none;box-shadow:0 6px 18px rgba(37,99,235,.07);transition:.18s ease}
+.passport-tool-banner-inline:hover{transform:translateY(-1px);border-color:#93c5fd;box-shadow:0 10px 24px rgba(37,99,235,.11)}
+.passport-tool-banner-inline-icon{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:#2563eb;color:#fff;font-size:19px}
+.passport-tool-banner-inline-copy{display:flex;flex-direction:column;min-width:0;flex:1}.passport-tool-banner-inline-copy strong{font-size:14px;color:#1e3a8a;line-height:1.25}.passport-tool-banner-inline-copy small{font-size:11px;color:#64748b;margin-top:2px}.passport-tool-banner-inline-action{font-size:11px;font-weight:800;color:#2563eb;white-space:nowrap}
+@media(max-width:520px){.passport-tool-banner-inline{gap:9px;padding:10px}.passport-tool-banner-inline-icon{width:34px;height:34px;flex-basis:34px;font-size:18px}.passport-tool-banner-inline-copy strong{font-size:13px}.passport-tool-banner-inline-copy small{font-size:10px}.passport-tool-banner-inline-action{font-size:10px}}
