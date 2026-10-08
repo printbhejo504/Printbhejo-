@@ -10,6 +10,7 @@ export default defineConfig({
         tools: "tools.html",
         "word-to-pdf": "word-to-pdf.html",
         "pdf-to-word": "pdf-to-word.html",
+        "image-to-pdf": "image-to-pdf.html",
       },
     },
   },
