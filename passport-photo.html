@@ -45,6 +45,18 @@
 <div class="preview-title">Photo preview</div>
 <div class="photo-preview-frame"><canvas id="previewCanvas"></canvas></div>
 <div class="zoom-row"><span>Zoom</span><input id="zoomRange" type="range" min="1" max="2.5" step="0.01" value="1"></div>
+<div class="filter-block"><span class="control-label">Enhance photo</span>
+<div class="filter-row">
+<button class="filter-button active" data-filter="original" type="button">Original</button>
+<button class="filter-button" data-filter="auto" type="button">Auto Enhance</button>
+<button class="filter-button" data-filter="bright" type="button">Bright</button>
+<button class="filter-button" data-filter="natural" type="button">Natural</button>
+<button class="filter-button" data-filter="sharp" type="button">Sharp</button>
+<button class="filter-button" data-filter="bw" type="button">B&amp;W</button>
+<button class="filter-button" data-filter="warm" type="button">Warm</button>
+<button class="filter-button" data-filter="cool" type="button">Cool</button>
+</div>
+</div>
 </div>
 
 <div class="controls">
@@ -83,7 +95,7 @@
   const countLabel = document.getElementById("countLabel");
   if (!input || !upload || !editor || !preview || !sheet || !zoom) return;
 
-  let image = null, count = 4;
+  let image = null, count = 4, activeFilter = "original";
   const PW=413, PH=531, A4W=2480, A4H=3508;
 
   function draw(canvas,w,h){
@@ -91,11 +103,14 @@
     canvas.width=w; canvas.height=h;
     const ctx=canvas.getContext("2d");
     ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+    const filters={original:"none",auto:"brightness(1.08) contrast(1.12) saturate(1.05)",bright:"brightness(1.18) contrast(1.03)",natural:"brightness(1.04) contrast(1.05) saturate(1.03)",sharp:"contrast(1.14) saturate(1.04)",bw:"grayscale(1) contrast(1.08)",warm:"brightness(1.05) saturate(1.12) sepia(.12)",cool:"brightness(1.04) saturate(.98) hue-rotate(-8deg)"};
     const target=w/h, source=image.width/image.height, z=Math.max(1,Number(zoom.value)||1);
     let sw,sh,sx,sy;
     if(source>target){ sh=image.height/z; sw=sh*target; sx=(image.width-sw)/2; sy=(image.height-sh)/2; }
     else { sw=image.width/z; sh=sw/target; sx=(image.width-sw)/2; sy=(image.height-sh)/2; }
+    ctx.filter=filters[activeFilter]||"none";
     ctx.drawImage(image,Math.max(0,sx),Math.max(0,sy),Math.min(sw,image.width),Math.min(sh,image.height),0,0,w,h);
+    ctx.filter="none";
   }
 
   function render(){
@@ -105,10 +120,10 @@
     const ctx=sheet.getContext("2d");
     ctx.fillStyle="#fff"; ctx.fillRect(0,0,A4W,A4H);
     const mm=300/25.4, fw=Math.round(35*mm), fh=Math.round(45*mm);
-    const gap=Math.round(5*mm), margin=Math.round(10*mm);
+    const gap=Math.round(3*mm), topMargin=Math.round(6*mm);
     const cols=count===4?2:count===6?3:4, rows=Math.ceil(count/cols);
     const totalW=cols*fw+(cols-1)*gap, totalH=rows*fh+(rows-1)*gap;
-    const x0=Math.round((A4W-totalW)/2), y0=Math.round((A4H-totalH)/2);
+    const x0=Math.round((A4W-totalW)/2), y0=Math.round(topMargin*mm);
     for(let i=0;i<count;i++){
       const x=x0+(i%cols)*(fw+gap), y=y0+Math.floor(i/cols)*(fh+gap);
       ctx.strokeStyle="#cbd5e1"; ctx.lineWidth=2; ctx.strokeRect(x,y,fw,fh);
@@ -126,10 +141,11 @@
     reader.readAsDataURL(file);
   }
   input.addEventListener("change",()=>load(input.files?.[0]));
+  document.querySelectorAll(".filter-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".filter-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter||"original";render();}));
   document.querySelectorAll(".count-button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".count-button").forEach(x=>x.classList.remove("active"));b.classList.add("active");count=Number(b.dataset.count)||4;render();}));
   zoom.addEventListener("input",render);
   document.getElementById("changePhoto")?.addEventListener("click",()=>input.click());
-  document.getElementById("resetBtn")?.addEventListener("click",()=>{image=null;input.value="";editor.hidden=true;upload.hidden=false;});
+  document.getElementById("resetBtn")?.addEventListener("click",()=>{image=null;input.value="";activeFilter="original";document.querySelectorAll(".filter-button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="original"));editor.hidden=true;upload.hidden=false;});
   document.getElementById("downloadBtn")?.addEventListener("click",()=>{if(!image)return;const a=document.createElement("a");a.download="printbhejo-passport-photos-"+count+".jpg";a.href=sheet.toDataURL("image/jpeg",.94);a.click();});
   document.getElementById("printBtn")?.addEventListener("click",()=>{if(!image)return;const w=window.open("","_blank");if(!w){alert("Please allow pop-ups to print.");return;}w.document.write('<html><head><title>PrintBhejo Passport Photos</title><style>@page{size:A4;margin:0}html,body{margin:0}img{width:210mm;height:297mm;display:block}</style></head><body><img src="'+sheet.toDataURL("image/jpeg",.94)+'"></body></html>');w.document.close();w.onload=()=>{w.focus();w.print();};});
 })();
