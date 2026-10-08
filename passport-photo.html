@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" type="image/png" href="/printbhejo-logo-new.png">
+<link rel="canonical" href="https://printbhejo.com/passport-photo.html">
+<meta name="robots" content="index, follow">
+<meta name="description" content="Create standard passport size photos online. Upload one photo, choose 4, 6 or 8 photos, automatically arrange them on an A4 print sheet, download or print.">
+<title>Passport Photo Maker – 4, 6 & 8 Photos | PrintBhejo</title>
+</head>
+<body class="passport-page">
+<main class="passport-shell">
+<nav class="passport-topbar">
+<a class="passport-brand" href="/"><img src="/printbhejo-logo-new.png" alt="PrintBhejo logo"><span>PrintBhejo</span></a>
+<a class="passport-back" href="/tools.html">← Back to Tools</a>
+</nav>
+
+<header class="passport-hero">
+<span class="passport-kicker">FREE • BROWSER-BASED</span>
+<h1>Passport Photo Maker</h1>
+<p>Upload one photo and create 4, 6 or 8 standard passport-size photos on an A4 print sheet.</p>
+</header>
+
+<section class="passport-card">
+<div id="uploadPanel" class="upload-panel">
+<div class="upload-icon" aria-hidden="true">📸</div>
+<h2>Upload your photo</h2>
+<p>Choose a clear front-facing photo. Processing happens in your browser.</p>
+<label class="upload-button" for="photoInput">Choose Photo</label>
+<input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+<p class="upload-hint">JPG, PNG or WebP</p>
+</div>
+
+<div id="editorPanel" class="editor-panel" hidden>
+<div class="editor-head">
+<div><h2>Your passport photo</h2><p>Adjust the crop, then select how many photos you want.</p></div>
+<button id="changePhoto" class="secondary-button" type="button">Change Photo</button>
+</div>
+
+<div class="workspace">
+<div class="preview-wrap">
+<div class="preview-title">Photo preview</div>
+<div class="photo-preview-frame"><canvas id="previewCanvas"></canvas></div>
+<div class="zoom-row"><span>Zoom</span><input id="zoomRange" type="range" min="1" max="2.5" step="0.01" value="1"></div>
+</div>
+
+<div class="controls">
+<div class="control-block"><span class="control-label">Photos per A4 sheet</span>
+<div class="choice-row">
+<button class="count-button active" data-count="4" type="button">4 Photos</button>
+<button class="count-button" data-count="6" type="button">6 Photos</button>
+<button class="count-button" data-count="8" type="button">8 Photos</button>
+</div></div>
+<div class="info-box"><strong>Standard size</strong><br>35 × 45 mm • A4 print sheet</div>
+<div class="action-row">
+<button id="downloadBtn" class="primary-button" type="button">Download A4 JPG</button>
+<button id="printBtn" class="secondary-button" type="button">Print Sheet</button>
+</div>
+<button id="resetBtn" class="text-button" type="button">Start over</button>
+</div>
+</div>
+
+<div class="sheet-section">
+<div class="sheet-head"><h3>A4 print preview</h3><span id="countLabel">4 photos</span></div>
+<canvas id="sheetCanvas"></canvas>
+</div>
+</div>
+</section>
+
+<footer class="passport-footer"><a href="/">PrintBhejo</a> · Passport Photo Maker</footer>
+</main>
+<script src="/passport-photo.js"></script>
+</body>
+</html>
