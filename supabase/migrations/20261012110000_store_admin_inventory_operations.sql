@@ -58,6 +58,10 @@ begin
     raise exception 'Unsupported stock movement type' using errcode = '22023';
   end if;
 
+  if p_movement_type = 'damage' and p_quantity_delta >= 0 then
+    raise exception 'Damage movements must reduce stock' using errcode = '22023';
+  end if;
+
   if p_movement_type = 'receipt' then
     if p_quantity_delta <= 0 or not public.has_store_permission('store.inventory.receive') then
       raise exception 'Permission denied or invalid receipt quantity' using errcode = '42501';
