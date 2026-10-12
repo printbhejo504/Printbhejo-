@@ -116,7 +116,11 @@ create policy "Authorized staff archive Store products"
 
 create policy "Authorized staff view Store inventory"
   on public.store_inventory for select to authenticated
-  using (public.has_store_permission('store.inventory.view'));
+  using (
+    public.has_store_permission('store.inventory.view')
+    or public.has_store_permission('store.inventory.receive')
+    or public.has_store_permission('store.inventory.adjust')
+  );
 
 create policy "Authorized staff view purchase costs"
   on public.store_product_costs for select to authenticated
