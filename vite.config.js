@@ -15,6 +15,7 @@ export default defineConfig({
         store: "store.html",
         "store-admin": "store-admin.html",
         "store-orders": "store-orders.html",
+        "store-account": "store-account.html",
       },
     },
   },
