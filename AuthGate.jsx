@@ -34,6 +34,16 @@ export default function AuthGate({ children }) {
   }, []);
 
   useEffect(() => {
+    if (session !== null) return;
+    const requested = new URLSearchParams(window.location.search).get("storeAuth");
+    if (requested === "login" || requested === "signup") {
+      setMode(requested); setError(""); setMessage(""); setShowAuth(true);
+      const url = new URL(window.location.href); url.searchParams.delete("storeAuth");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+  }, [session]);
+
+  useEffect(() => {
     const findHeader = () => setHeaderTarget(document.querySelector(".header"));
     findHeader();
     const t = setTimeout(findHeader, 0);
