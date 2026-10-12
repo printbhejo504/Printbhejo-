@@ -19,6 +19,7 @@ export default function AuthGate({ children }) {
   const [showAuth, setShowAuth] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [headerTarget, setHeaderTarget] = useState(null);
+  const [authReturnTo] = useState(() => new URLSearchParams(window.location.search).get("storeAuth") ? "/store.html" : "/");
 
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function AuthGate({ children }) {
     setBusy(false);
     if (authError) { setError("Login ID ya password galat hai."); return; }
     setSession(data.session); setShowAuth(false); setPassword("");
-    window.location.reload();
+    window.location.replace(authReturnTo);
   }
 
   async function signup(e) {
@@ -91,7 +92,7 @@ export default function AuthGate({ children }) {
     const { data, error: authError } = await supabase.auth.signUp({ email: loginId.trim(), password, options: { data: { full_name: fullName.trim() } } });
     setBusy(false);
     if (authError) { setError(authError.message || "Account create nahi ho saka."); return; }
-    if (data.session) { setSession(data.session); setShowAuth(false); window.location.reload(); }
+    if (data.session) { setSession(data.session); setShowAuth(false); window.location.replace(authReturnTo); }
     else { setMessage("Account ban gaya. Email inbox me verification link check karein, phir Login karein."); setMode("login"); }
     setPassword("");
   }
@@ -99,7 +100,7 @@ export default function AuthGate({ children }) {
   async function googleLogin() {
     if (!supabase) { setError("Supabase is not configured."); return; }
     setError(""); setMessage(""); setBusy(true);
-    const { error: authError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin + window.location.pathname } });
+    const { error: authError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin + authReturnTo } });
     setBusy(false);
     if (authError) setError("Google login start nahi ho saka. Supabase me Google provider enable karein.");
   }
