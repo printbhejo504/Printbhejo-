@@ -14,6 +14,7 @@ export default defineConfig({
         "passport-photo": "passport-photo.html",
         store: "store.html",
         "store-admin": "store-admin.html",
+        "store-orders": "store-orders.html",
       },
     },
   },
