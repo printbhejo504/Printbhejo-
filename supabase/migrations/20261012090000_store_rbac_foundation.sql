@@ -87,6 +87,7 @@ insert into public.store_permissions (code, module, action, description) values
   ('store.suppliers.view', 'suppliers', 'view', 'View supplier records.'),
   ('store.suppliers.manage', 'suppliers', 'manage', 'Create and edit suppliers.'),
   ('store.costs.view', 'costs', 'view', 'View purchase cost and margin information.'),
+  ('store.costs.update', 'costs', 'update', 'Create and update purchase costs.'),
   ('store.orders.view', 'orders', 'view', 'View orders permitted by assigned scope.'),
   ('store.orders.process', 'orders', 'process', 'Confirm, pack and process orders.'),
   ('store.orders.cancel', 'orders', 'cancel', 'Cancel eligible orders.'),
