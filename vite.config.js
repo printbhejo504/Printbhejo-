@@ -12,6 +12,7 @@ export default defineConfig({
         "pdf-to-word": "pdf-to-word.html",
         "image-to-pdf": "image-to-pdf.html",
         "passport-photo": "passport-photo.html",
+        store: "store.html",
       },
     },
   },
