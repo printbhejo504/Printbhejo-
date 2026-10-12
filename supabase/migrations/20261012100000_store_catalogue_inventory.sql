@@ -124,8 +124,8 @@ create policy "Authorized staff view purchase costs"
 
 create policy "Authorized staff manage purchase costs"
   on public.store_product_costs for all to authenticated
-  using (public.has_store_permission('store.costs.view'))
-  with check (public.has_store_permission('store.costs.view'));
+  using (public.has_store_permission('store.costs.update'))
+  with check (public.has_store_permission('store.costs.update'));
 
 create policy "Authorized staff view inventory movements"
   on public.store_inventory_movements for select to authenticated
