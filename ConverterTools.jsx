@@ -46,24 +46,39 @@ async function canvasBlob(img, type, quality, scale = 1) {
 
 async function compressToTarget(file, targetKB, preservePng = false) {
   const img = await loadImage(file), target = Math.max(5, Number(targetKB) || 100) * 1024;
-  const type = preservePng ? "image/png" : "image/jpeg"; let best = null;
-  for (let scale = 1; scale >= 0.25; scale -= 0.1) for (let q = 0.95; q >= 0.1; q -= 0.05) {
-    const blob = await canvasBlob(img, type, q, scale);
-    if (!best || blob.size < best.size) best = blob;
-    if (blob.size <= target) return blob;
+  const type = preservePng ? "image/png" : "image/jpeg";
+  let best = null;
+  // Prioritize legible text: try high quality at original dimensions before shrinking pixels.
+  for (let scaleStep = 0; scaleStep <= 15; scaleStep++) {
+    const scale = 1 - scaleStep * 0.05;
+    for (let qualityStep = 0; qualityStep <= 6; qualityStep++) {
+      const q = 0.95 - qualityStep * 0.05;
+      const blob = await canvasBlob(img, type, q, scale);
+      if (!best || blob.size < best.size) best = blob;
+      if (blob.size <= target) return blob;
+    }
   }
   return best;
 }
 
 async function imagesToPdf(files) {
   const pdf = await PDFDocument.create();
+  const pageWidth = 595.28, pageHeight = 841.89, margin = 24;
   for (const file of files) {
-    const bytes = await file.arrayBuffer();
-    const image = file.type === "image/png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
-    const page = pdf.addPage([image.width, image.height]);
-    page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+    let image;
+    if (file.type === "image/png") image = await pdf.embedPng(await file.arrayBuffer());
+    else if (file.type === "image/jpeg" || file.type === "image/jpg") image = await pdf.embedJpg(await file.arrayBuffer());
+    else {
+      // Support browser-readable formats such as WebP without needlessly lowering source resolution.
+      const converted = await canvasBlob(await loadImage(file), "image/png", 1);
+      image = await pdf.embedPng(await converted.arrayBuffer());
+    }
+    const page = pdf.addPage([pageWidth, pageHeight]);
+    const fit = Math.min((pageWidth - margin * 2) / image.width, (pageHeight - margin * 2) / image.height);
+    const width = image.width * fit, height = image.height * fit;
+    page.drawImage(image, { x: (pageWidth - width) / 2, y: (pageHeight - height) / 2, width, height });
   }
-  return new Blob([await pdf.save()], { type: "application/pdf" });
+  return new Blob([await pdf.save({ useObjectStreams: true })], { type: "application/pdf" });
 }
 
 async function excelToPdf(file) {
@@ -90,14 +105,21 @@ async function excelToPdf(file) {
   return new Blob([await pdf.save()], { type: "application/pdf" });
 }
 
-async function pdfToImages(file) {
+async function pdfToImages(file, dpi = 300) {
   const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise, outputs = [];
+  // PDF.js uses 72 points per inch; render at the requested DPI for sharper small text.
+  const scale = Math.max(1, Math.min(4.1667, Number(dpi) / 72 || 300 / 72));
   for (let n = 1; n <= pdf.numPages; n++) {
-    const page = await pdf.getPage(n), viewport = page.getViewport({ scale: 1.6 });
-    const canvas = document.createElement("canvas"); canvas.width = viewport.width; canvas.height = viewport.height;
-    await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-    outputs.push({ blob, name: `${file.name.replace(/\.pdf$/i, "")}-page-${n}.png` });
+    const page = await pdf.getPage(n), viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("Your browser could not create an image canvas.");
+    context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: context, viewport }).promise;
+    const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("Could not export this page image.")), "image/png"));
+    outputs.push({ blob, name: file.name.replace(/\.pdf$/i, "") + "-page-" + n + ".png" });
+    canvas.width = 1; canvas.height = 1;
   }
   return outputs;
 }
@@ -172,7 +194,7 @@ async function pdfToWord(file) {
 export default function ConverterTools({ onClose, inline = false, initialTool = "png-jpg" }) {
   const [tool, setTool] = useState(initialTool);
   const [fileList, setFileList] = useState([]);
-  const [targetKB, setTargetKB] = useState("100"), [quality, setQuality] = useState("85");
+  const [targetKB, setTargetKB] = useState("100"), [quality, setQuality] = useState("95"), [pdfDpi, setPdfDpi] = useState("300");
   const [busy, setBusy] = useState(false), [result, setResult] = useState(null), [error, setError] = useState("");
   const inputRef = useRef(null), activeTool = useMemo(() => tools.find(t => t.id === tool) || tools[0], [tool]);
   useEffect(() => { setFileList([]); setResult(null); setError(""); }, [tool]);
@@ -186,7 +208,7 @@ export default function ConverterTools({ onClose, inline = false, initialTool = 
       if (tool === "png-jpg") { const b = await canvasBlob(await loadImage(f), "image/jpeg", Number(quality) / 100); setResult({ blob: b, name: f.name.replace(/\.png$/i, "") + ".jpg" }); }
       else if (tool === "jpg-png") { const b = await canvasBlob(await loadImage(f), "image/png", 1); setResult({ blob: b, name: f.name.replace(/\.(jpe?g)$/i, "") + ".png" }); }
       else if (tool === "img-pdf") { setResult({ blob: await imagesToPdf(fileList), name: "PrintBhejo-images.pdf" }); }
-      else if (tool === "pdf-img") { setResult({ multiple: await pdfToImages(f) }); }
+      else if (tool === "pdf-img") { setResult({ multiple: await pdfToImages(f, Number(pdfDpi)) }); }
       else if (tool === "word-pdf") { setResult({ blob: await wordToPdf(f), name: f.name.replace(/\.docx$/i, "") + ".pdf" }); }
       else if (tool === "pdf-word") { setResult({ blob: await pdfToWord(f), name: f.name.replace(/\.pdf$/i, "") + ".docx" }); }
       else if (tool === "xlsx-pdf") { setResult({ blob: await excelToPdf(f), name: f.name.replace(/\.(xlsx|xls)$/i, "") + ".pdf" }); }
@@ -202,7 +224,8 @@ export default function ConverterTools({ onClose, inline = false, initialTool = 
       <div className="converter-workspace">
         <div className="drop-area" onClick={() => inputRef.current?.click()}><input ref={inputRef} hidden type="file" accept={activeTool.accept} multiple={activeTool.multiple} onChange={choose}/><ImageIcon size={34}/><strong>{fileList.length ? `${fileList.length} file${fileList.length > 1 ? "s" : ""} selected` : "Select file"}</strong><span>{activeTool.accept}</span></div>
         {(tool === "image-compress" || tool === "signature-compress") && <div className="compress-controls"><label>Target size (KB)<input type="number" min="5" value={targetKB} onChange={e => setTargetKB(e.target.value)} placeholder="100"/></label><small>Example: 50 KB, 100 KB, 200 KB. The browser reduces dimensions/quality until it reaches the target when possible.</small></div>}
-        {tool === "png-jpg" && <div className="compress-controls"><label>JPEG quality (%)<input type="number" min="10" max="100" value={quality} onChange={e => setQuality(e.target.value)}/></label></div>}
+        {tool === "png-jpg" && <div className="compress-controls"><label>JPEG quality (%)<input type="number" min="10" max="100" value={quality} onChange={e => setQuality(String(Math.max(10, Math.min(100, Number(e.target.value) || 10)))}/></label><small>Default 95% keeps text edges clearer. Lower values create smaller files but may soften fine details.</small></div>}
+        {tool === "pdf-img" && <div className="compress-controls"><label>Image resolution (DPI)<select value={pdfDpi} onChange={e => setPdfDpi(e.target.value)}><option value="150">150 DPI — smaller files</option><option value="216">216 DPI — balanced</option><option value="300">300 DPI — sharp print quality</option></select></label><small>300 DPI is best for small text and printing; very long PDFs may take more memory.</small></div>}
         {(tool === "word-pdf" || tool === "pdf-word") && <div className="compress-controls"><small>Private browser conversion. No file upload is used. DOCX formatting, tables and PDF layouts may not be reproduced exactly.</small></div>}
         <button className="convert-btn" disabled={busy || !fileList.length} onClick={convert}>{busy ? <><RefreshCw className="spin" size={18}/> Converting…</> : <>Convert Now <FileOutput size={18}/></>}</button>
         {error && <div className="converter-error">{error}</div>}
