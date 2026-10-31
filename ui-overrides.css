@@ -37,3 +37,9 @@ html,body,#root,.app{min-height:100%;height:auto;overflow-x:hidden;overflow-y:vi
 .hero h1::after{content:"";display:block;width:64px;height:64px;flex:0 0 64px;background:url("/printbhejo-logo-new.png?v=4") center/contain no-repeat;border-radius:10px;filter:drop-shadow(0 4px 8px rgba(15,23,42,.10));margin:0;align-self:center}
 @media(max-width:800px){.hero h1{gap:7px!important}.hero h1::before{font-size:40px;letter-spacing:-1px;background:linear-gradient(90deg,#0b0f19 0 46%,#2563eb 46% 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}.hero h1::after{width:58px;height:58px;flex-basis:58px}}
 @media(max-width:520px){.hero h1{gap:5px!important}.hero h1::before{font-size:34px;letter-spacing:-.8px;background:linear-gradient(90deg,#0b0f19 0 46%,#2563eb 46% 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}.hero h1::after{width:48px;height:48px;flex-basis:48px}}
+
+
+/* Keep QR send sessions focused on the sender workflow. */
+.pb-sender-qr-mode .hero,
+.pb-sender-qr-mode main > .section,
+.pb-sender-qr-mode footer { display: none !important; }
